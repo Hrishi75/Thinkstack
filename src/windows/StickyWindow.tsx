@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { emit } from "@tauri-apps/api/event";
 import { PhysicalPosition, PhysicalSize } from "@tauri-apps/api/dpi";
 import { X, Palette } from "lucide-react";
 import { stickyRepo } from "../lib/repo";
@@ -14,7 +15,11 @@ export default function StickyWindow({ id }: { id: string }) {
   const [showColors, setShowColors] = useState(false);
 
   const saveContent = useRef(
-    debounce((value: string) => stickyRepo.update(id, { content: value }), 400)
+    debounce(async (value: string) => {
+      await stickyRepo.update(id, { content: value });
+      // Let the main window refresh its sticky list with the new text.
+      await emit("thinkstack://refresh");
+    }, 400)
   ).current;
 
   const saveGeometry = useRef(
@@ -56,10 +61,19 @@ export default function StickyWindow({ id }: { id: string }) {
 
   const c = STICKY_COLORS[color] ?? STICKY_COLORS.yellow;
 
-  const pickColor = (key: string) => {
+  const pickColor = async (key: string) => {
     setColor(key);
     setShowColors(false);
-    stickyRepo.update(id, { color: key });
+    await stickyRepo.update(id, { color: key });
+    await emit("thinkstack://refresh");
+  };
+
+  // Persist the final content before the window goes away — closing races the
+  // 400ms debounce, so flush it and await the write first.
+  const close = async () => {
+    await stickyRepo.update(id, { content });
+    await emit("thinkstack://refresh");
+    await getCurrentWindow().close();
   };
 
   return (
@@ -77,7 +91,7 @@ export default function StickyWindow({ id }: { id: string }) {
           <Palette size={14} />
         </button>
         <button
-          onClick={() => getCurrentWindow().close()}
+          onClick={close}
           className="no-drag rounded p-1 opacity-50 transition hover:bg-black/10 hover:opacity-100"
           title="Close"
         >

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCreateBlockNote } from "@blocknote/react";
 import { BlockNoteView } from "@blocknote/mantine";
 import type { PartialBlock } from "@blocknote/core";
@@ -54,6 +54,16 @@ export default function NoteEditor({ note }: { note: Note }) {
       saveContent(id, { title: value.trim() || "Untitled" });
     }, 300)
   ).current;
+
+  // Flush any pending debounced save when this editor unmounts (e.g. on note
+  // switch — the editor is keyed by note.id and remounts). Otherwise the last
+  // <400ms of edits are silently dropped.
+  useEffect(() => {
+    return () => {
+      saveTitle.flush();
+      saveBody.flush();
+    };
+  }, [saveTitle, saveBody]);
 
   const pickIcon = (e: string) => {
     setIcon(e);
