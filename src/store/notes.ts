@@ -1,14 +1,22 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import type { Note } from "../lib/types";
-import { notesRepo } from "../lib/repo";
+import type { Note, Tag, TagWithCount } from "../lib/types";
+import { TAG_COLOR_KEYS } from "../lib/types";
+import { notesRepo, tagsRepo } from "../lib/repo";
 import { now } from "../lib/db";
 
 interface NotesState {
   notes: Note[];
   selectedId: string | null;
   loaded: boolean;
+  /** All tags with note counts, for the filter bar. */
+  tags: TagWithCount[];
+  /** noteId → tags attached to it. */
+  noteTags: Record<string, Tag[]>;
+  /** Tag currently filtering the list, or null for "all". */
+  activeTagId: string | null;
   load: () => Promise<void>;
+  loadTags: () => Promise<void>;
   select: (id: string | null) => void;
   create: () => Promise<string>;
   saveContent: (
@@ -17,6 +25,10 @@ interface NotesState {
   ) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
   archive: (id: string) => Promise<void>;
+  setActiveTag: (id: string | null) => void;
+  addTag: (noteId: string, name: string) => Promise<void>;
+  removeTag: (noteId: string, tagId: string) => Promise<void>;
+  deleteTag: (tagId: string) => Promise<void>;
 }
 
 /** Stable sort: pinned first, then most-recently updated. */
@@ -26,15 +38,41 @@ function sortNotes(notes: Note[]): Note[] {
   );
 }
 
+/** Deterministic color for a tag name, so the same name always looks the same. */
+function colorForName(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return TAG_COLOR_KEYS[h % TAG_COLOR_KEYS.length];
+}
+
 export const useNotes = create<NotesState>((set, get) => ({
   notes: [],
   selectedId: null,
   loaded: false,
+  tags: [],
+  noteTags: {},
+  activeTagId: null,
 
   async load() {
     const notes = await notesRepo.list();
     set({ notes, loaded: true });
     if (!get().selectedId && notes.length) set({ selectedId: notes[0].id });
+    await get().loadTags();
+  },
+
+  async loadTags() {
+    const [tags, links] = await Promise.all([tagsRepo.list(), tagsRepo.links()]);
+    const noteTags: Record<string, Tag[]> = {};
+    for (const row of links) {
+      const tag: Tag = {
+        id: row.id,
+        name: row.name,
+        color: row.color,
+        created_at: row.created_at,
+      };
+      (noteTags[row.note_id] ??= []).push(tag);
+    }
+    set({ tags, noteTags });
   },
 
   select(id) {
@@ -96,5 +134,30 @@ export const useNotes = create<NotesState>((set, get) => ({
         s.selectedId === id ? notes[0]?.id ?? null : s.selectedId;
       return { notes, selectedId };
     });
+  },
+
+  setActiveTag(id) {
+    set((s) => ({ activeTagId: s.activeTagId === id ? null : id }));
+  },
+
+  async addTag(noteId, name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const tag = await tagsRepo.ensure(trimmed, colorForName(trimmed));
+    await tagsRepo.attach(noteId, tag.id);
+    await get().loadTags();
+  },
+
+  async removeTag(noteId, tagId) {
+    await tagsRepo.detach(noteId, tagId);
+    await get().loadTags();
+  },
+
+  async deleteTag(tagId) {
+    await tagsRepo.remove(tagId);
+    set((s) => ({
+      activeTagId: s.activeTagId === tagId ? null : s.activeTagId,
+    }));
+    await get().loadTags();
   },
 }));
