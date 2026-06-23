@@ -1,8 +1,9 @@
-import { useRef, lazy, Suspense } from "react";
+import { useRef, useMemo, lazy, Suspense } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus, FileText, Pin } from "lucide-react";
 import { useNotes } from "../../store/notes";
 import { cn } from "../../lib/util";
+import { tagStyle, tagHex } from "./tagStyle";
 
 // Lazy-load the heavy BlockNote editor to keep cold start fast.
 const NoteEditor = lazy(() => import("./NoteEditor"));
@@ -23,10 +24,21 @@ export default function NotesView() {
   const select = useNotes((s) => s.select);
   const create = useNotes((s) => s.create);
   const togglePin = useNotes((s) => s.togglePin);
+  const tags = useNotes((s) => s.tags);
+  const noteTags = useNotes((s) => s.noteTags);
+  const activeTagId = useNotes((s) => s.activeTagId);
+  const setActiveTag = useNotes((s) => s.setActiveTag);
+
+  const visibleNotes = useMemo(() => {
+    if (!activeTagId) return notes;
+    return notes.filter((n) =>
+      (noteTags[n.id] ?? []).some((t) => t.id === activeTagId)
+    );
+  }, [notes, noteTags, activeTagId]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
-    count: notes.length,
+    count: visibleNotes.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 56,
     overscan: 10,
@@ -52,6 +64,34 @@ export default function NotesView() {
           </button>
         </div>
 
+        {tags.length > 0 && (
+          <div className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-2">
+            {tags.map((t) => {
+              const active = activeTagId === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTag(t.id)}
+                  style={active ? tagStyle(t.color) : undefined}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium transition",
+                    !active &&
+                      "border-border text-muted hover:border-border hover:text-text"
+                  )}
+                  title={active ? "Clear filter" : `Filter by ${t.name}`}
+                >
+                  <span
+                    className="h-1.5 w-1.5 rounded-full"
+                    style={{ backgroundColor: tagHex(t.color) }}
+                  />
+                  {t.name}
+                  <span className="opacity-60">{t.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {notes.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted">
             <FileText size={28} className="opacity-40" />
@@ -63,13 +103,25 @@ export default function NotesView() {
               Create your first note
             </button>
           </div>
+        ) : visibleNotes.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted">
+            <FileText size={28} className="opacity-40" />
+            <p>No notes with this tag.</p>
+            <button
+              onClick={() => setActiveTag(activeTagId)}
+              className="mt-1 rounded-md bg-elevated px-3 py-1.5 text-text transition hover:bg-elevated/70"
+            >
+              Clear filter
+            </button>
+          </div>
         ) : (
           <div ref={parentRef} className="flex-1 overflow-y-auto px-2 pb-3">
             <div
               style={{ height: virtualizer.getTotalSize(), position: "relative" }}
             >
               {virtualizer.getVirtualItems().map((row) => {
-                const note = notes[row.index];
+                const note = visibleNotes[row.index];
+                const rowTags = noteTags[note.id] ?? [];
                 return (
                   <div
                     key={note.id}
@@ -96,9 +148,18 @@ export default function NotesView() {
                         <span className="text-[15px] leading-none">{note.icon}</span>
                         <span className="truncate">{note.title || "Untitled"}</span>
                       </div>
-                      <div className="truncate pl-[23px] text-[11.5px] text-muted">
-                        {relativeTime(note.updated_at)} ·{" "}
-                        {note.body_text.slice(0, 40) || "Empty"}
+                      <div className="flex items-center gap-1 truncate pl-[23px] text-[11.5px] text-muted">
+                        {rowTags.slice(0, 3).map((t) => (
+                          <span
+                            key={t.id}
+                            className="h-1.5 w-1.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: tagHex(t.color) }}
+                          />
+                        ))}
+                        <span className="truncate">
+                          {relativeTime(note.updated_at)} ·{" "}
+                          {note.body_text.slice(0, 40) || "Empty"}
+                        </span>
                       </div>
                     </button>
                     <button

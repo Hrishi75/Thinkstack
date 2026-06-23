@@ -40,6 +40,32 @@ export interface SearchHit {
   snippet: string;
 }
 
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  created_at: number;
+}
+
+/** A tag plus how many notes carry it (for the filter bar). */
+export interface TagWithCount extends Tag {
+  count: number;
+}
+
+/** Selectable tag colors. Key is stored in the DB; hex is used for rendering. */
+export const TAG_COLORS: Record<string, string> = {
+  gray: "#6b7280",
+  red: "#ef4444",
+  orange: "#f97316",
+  yellow: "#eab308",
+  green: "#22c55e",
+  blue: "#3b82f6",
+  purple: "#a855f7",
+  pink: "#ec4899",
+};
+
+export const TAG_COLOR_KEYS = Object.keys(TAG_COLORS);
+
 export const STICKY_COLORS: Record<string, { bg: string; text: string }> = {
   yellow: { bg: "#fef3a8", text: "#4a3f00" },
   pink: { bg: "#ffd4e5", text: "#5a1733" },

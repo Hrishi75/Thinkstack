@@ -1,5 +1,6 @@
+import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
-import type { Note, Task, Sticky, SearchHit } from "./types";
+import type { Note, Task, Sticky, SearchHit, Tag, TagWithCount } from "./types";
 
 /* ----------------------------- Notes ----------------------------- */
 
@@ -160,6 +161,76 @@ export const stickyRepo = {
   async remove(id: string): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM sticky_notes WHERE id = ?", [id]);
+  },
+};
+
+/* ------------------------------ Tags ------------------------------ */
+
+interface NoteTagRow extends Tag {
+  note_id: string;
+}
+
+export const tagsRepo = {
+  /** All tags with the number of (non-archived consideration left to caller) notes attached. */
+  async list(): Promise<TagWithCount[]> {
+    const db = await getDb();
+    return db.select<TagWithCount[]>(
+      `SELECT t.id, t.name, t.color, t.created_at, COUNT(nt.note_id) AS count
+       FROM tags t
+       LEFT JOIN note_tags nt ON nt.tag_id = t.id
+       GROUP BY t.id
+       ORDER BY t.name COLLATE NOCASE`
+    );
+  },
+
+  /** Every note→tag link, joined with tag data, for building an in-memory map. */
+  async links(): Promise<NoteTagRow[]> {
+    const db = await getDb();
+    return db.select<NoteTagRow[]>(
+      `SELECT nt.note_id, t.id, t.name, t.color, t.created_at
+       FROM note_tags nt
+       JOIN tags t ON t.id = nt.tag_id
+       ORDER BY t.name COLLATE NOCASE`
+    );
+  },
+
+  /** Find an existing tag by name (case-insensitive) or create a new one. */
+  async ensure(name: string, color: string): Promise<Tag> {
+    const db = await getDb();
+    const trimmed = name.trim();
+    const existing = await db.select<Tag[]>(
+      "SELECT * FROM tags WHERE name = ? COLLATE NOCASE LIMIT 1",
+      [trimmed]
+    );
+    if (existing[0]) return existing[0];
+    const tag: Tag = { id: nanoid(), name: trimmed, color, created_at: now() };
+    await db.execute(
+      "INSERT INTO tags (id, name, color, created_at) VALUES (?, ?, ?, ?)",
+      [tag.id, tag.name, tag.color, tag.created_at]
+    );
+    return tag;
+  },
+
+  async attach(noteId: string, tagId: string): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      "INSERT OR IGNORE INTO note_tags (note_id, tag_id) VALUES (?, ?)",
+      [noteId, tagId]
+    );
+  },
+
+  async detach(noteId: string, tagId: string): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      "DELETE FROM note_tags WHERE note_id = ? AND tag_id = ?",
+      [noteId, tagId]
+    );
+  },
+
+  /** Delete a tag entirely; note_tags rows cascade away. */
+  async remove(tagId: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM tags WHERE id = ?", [tagId]);
   },
 };
 
