@@ -9,6 +9,7 @@ import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
 import { blocksToText, debounce } from "../../lib/util";
 import type { Note } from "../../lib/types";
+import TagBar from "./TagBar";
 
 const EMOJIS = [
   "📄", "📝", "📌", "💡", "✅", "🔥", "⭐️", "📚", "🧠", "🎯",
@@ -107,6 +108,9 @@ export default function NoteEditor({ note }: { note: Note }) {
             placeholder="Untitled"
             className="mt-2 w-full bg-transparent text-[40px] font-bold leading-tight tracking-tight outline-none placeholder:text-muted/50"
           />
+
+          {/* Tags */}
+          <TagBar noteId={note.id} />
 
           {/* Body */}
           <div className="mt-2">
