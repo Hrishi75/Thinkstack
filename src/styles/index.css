@@ -62,6 +62,14 @@ body.window-capture {
   -webkit-app-region: no-drag;
 }
 
+/* Hide scrollbar while keeping scroll (e.g. tag filter row) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
