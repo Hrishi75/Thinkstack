@@ -82,6 +82,12 @@ pub fn run() {
             sql: include_str!("../migrations/0002_note_pinned.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "add tags and note_tags tables",
+            sql: include_str!("../migrations/0003_tags.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()
