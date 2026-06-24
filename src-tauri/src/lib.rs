@@ -100,7 +100,7 @@ pub fn run() {
 
     #[cfg(desktop)]
     {
-        use tauri_plugin_global_shortcut::{Modifiers, Code, ShortcutState};
+        use tauri_plugin_global_shortcut::{Code, Modifiers, ShortcutState};
         builder = builder.plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, shortcut, event| {
