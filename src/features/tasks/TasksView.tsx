@@ -54,9 +54,12 @@ export default function TasksView() {
 
   const remaining = tasks.filter((t) => !t.done).length;
   const completedCount = tasks.length - remaining;
+  const pct = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
   const visible = tasks.filter((t) =>
     filter === "active" ? !t.done : filter === "completed" ? t.done : true
   );
+  const filterCount = (key: Filter) =>
+    key === "active" ? remaining : key === "completed" ? completedCount : tasks.length;
 
   return (
     <div className="flex h-full flex-col">
@@ -64,8 +67,26 @@ export default function TasksView() {
       <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col overflow-hidden px-6">
         <div className="flex items-baseline justify-between pb-3">
           <h2 className="text-xl font-semibold">Tasks</h2>
-          <span className="text-sm text-muted">{remaining} remaining</span>
+          <span className="text-sm text-muted">
+            {remaining === 0 && tasks.length > 0
+              ? "All done 🎉"
+              : `${remaining} remaining`}
+          </span>
         </div>
+
+        {tasks.length > 0 && (
+          <div className="mb-3 flex items-center gap-3">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-elevated">
+              <div
+                className="h-full rounded-full bg-accent transition-all duration-300 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="text-[11px] tabular-nums text-muted">
+              {completedCount}/{tasks.length}
+            </span>
+          </div>
+        )}
 
         <form onSubmit={submit} className="no-drag mb-3">
           <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 focus-within:border-accent/50">
@@ -87,13 +108,16 @@ export default function TasksView() {
                   key={key}
                   onClick={() => setFilter(key)}
                   className={cn(
-                    "rounded-md px-2.5 py-1 text-[12.5px] transition",
+                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12.5px] transition",
                     filter === key
                       ? "bg-elevated font-medium text-text"
                       : "text-muted hover:bg-elevated/60 hover:text-text"
                   )}
                 >
                   {label}
+                  <span className="text-[10.5px] tabular-nums opacity-60">
+                    {filterCount(key)}
+                  </span>
                 </button>
               ))}
             </div>
