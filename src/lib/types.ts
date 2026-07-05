@@ -18,6 +18,8 @@ export interface Task {
   priority: number; // 0 none, 1 low, 2 med, 3 high
   note_id: string | null;
   position: number;
+  /** 1 once a due notification has been delivered; reset when due_at changes. */
+  notified: number;
   created_at: number;
 }
 

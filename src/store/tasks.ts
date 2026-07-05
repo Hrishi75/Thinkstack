@@ -55,6 +55,7 @@ export const useTasks = create<TasksState>((set, get) => ({
       priority: 0,
       note_id: null,
       position: minPos - 1,
+      notified: 0,
       created_at: now(),
     };
     await tasksRepo.create(task);

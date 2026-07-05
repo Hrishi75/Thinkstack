@@ -101,6 +101,12 @@ pub fn run() {
             sql: include_str!("../migrations/0003_tags.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "add notified column to tasks",
+            sql: include_str!("../migrations/0004_task_notified.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()

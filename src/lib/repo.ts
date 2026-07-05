@@ -152,6 +152,7 @@ export const tasksRepo = {
       "priority",
       "note_id",
       "position",
+      "notified",
     ]);
     if (!fields.length) return;
     values.push(id);
