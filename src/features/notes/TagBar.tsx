@@ -5,7 +5,9 @@ import { tagStyle, tagHex } from "./tagStyle";
 
 /** Tag chips + an inline add field for a single note, shown under its title. */
 export default function TagBar({ noteId }: { noteId: string }) {
-  const noteTags = useNotes((s) => s.noteTags[noteId] ?? []);
+  // Select the raw value (stable ref or undefined) — defaulting to a fresh []
+  // inside the selector makes every snapshot unequal and loops React forever.
+  const noteTags = useNotes((s) => s.noteTags[noteId]) ?? [];
   const allTags = useNotes((s) => s.tags);
   const addTag = useNotes((s) => s.addTag);
   const removeTag = useNotes((s) => s.removeTag);
