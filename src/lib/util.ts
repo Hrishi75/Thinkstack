@@ -51,6 +51,17 @@ export function blocksToText(doc: unknown): string {
   return out.join(" ").trim();
 }
 
+/** Compact "how long ago" label, e.g. "3m ago", "2h ago", "5d ago". */
+export function relativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
 /** First non-empty line of plain text → note title. */
 export function deriveTitle(text: string): string {
   const firstLine = text.split("\n").map((l) => l.trim()).find(Boolean);

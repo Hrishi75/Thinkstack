@@ -2,21 +2,11 @@ import { useRef, useMemo, lazy, Suspense } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus, FileText, Pin } from "lucide-react";
 import { useNotes } from "../../store/notes";
-import { cn } from "../../lib/util";
+import { cn, relativeTime } from "../../lib/util";
 import { tagStyle, tagHex } from "./tagStyle";
 
 // Lazy-load the heavy BlockNote editor to keep cold start fast.
 const NoteEditor = lazy(() => import("./NoteEditor"));
-
-function relativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
 
 export default function NotesView() {
   const notes = useNotes((s) => s.notes);
