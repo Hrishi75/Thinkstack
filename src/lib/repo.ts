@@ -106,14 +106,32 @@ export const notesRepo = {
   async removeForever(id: string): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM notes WHERE id = ?", [id]);
+    await scrubDeletedPages();
   },
 
   /** Permanently delete every archived note. */
   async emptyTrash(): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM notes WHERE archived = 1");
+    await scrubDeletedPages();
   },
 };
+
+/**
+ * SQLite DELETE only unlinks pages — the deleted text stays in the file's
+ * freelist and WAL until overwritten. After a permanent delete, rebuild the
+ * db and truncate the WAL so "delete forever" actually removes the bytes.
+ * Best-effort: a concurrent reader can make the checkpoint a no-op.
+ */
+async function scrubDeletedPages(): Promise<void> {
+  try {
+    const db = await getDb();
+    await db.execute("VACUUM");
+    await db.execute("PRAGMA wal_checkpoint(TRUNCATE)");
+  } catch {
+    // scrubbing is defense-in-depth; the rows are already gone
+  }
+}
 
 /* ----------------------------- Tasks ----------------------------- */
 
