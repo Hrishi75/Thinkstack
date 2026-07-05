@@ -9,6 +9,8 @@ interface NotesState {
   notes: Note[];
   selectedId: string | null;
   loaded: boolean;
+  /** Notes in the trash (archived = 1), most recently trashed first. */
+  trashed: Note[];
   /** All tags with note counts, for the filter bar. */
   tags: TagWithCount[];
   /** noteId → tags attached to it. */
@@ -17,6 +19,7 @@ interface NotesState {
   activeTagId: string | null;
   load: () => Promise<void>;
   loadTags: () => Promise<void>;
+  loadTrash: () => Promise<void>;
   select: (id: string | null) => void;
   create: () => Promise<string>;
   saveContent: (
@@ -25,6 +28,9 @@ interface NotesState {
   ) => Promise<void>;
   togglePin: (id: string) => Promise<void>;
   archive: (id: string) => Promise<void>;
+  restore: (id: string) => Promise<void>;
+  removeForever: (id: string) => Promise<void>;
+  emptyTrash: () => Promise<void>;
   setActiveTag: (id: string | null) => void;
   addTag: (noteId: string, name: string) => Promise<void>;
   removeTag: (noteId: string, tagId: string) => Promise<void>;
@@ -49,6 +55,7 @@ export const useNotes = create<NotesState>((set, get) => ({
   notes: [],
   selectedId: null,
   loaded: false,
+  trashed: [],
   tags: [],
   noteTags: {},
   activeTagId: null,
@@ -58,6 +65,10 @@ export const useNotes = create<NotesState>((set, get) => ({
     set({ notes, loaded: true });
     if (!get().selectedId && notes.length) set({ selectedId: notes[0].id });
     await get().loadTags();
+  },
+
+  async loadTrash() {
+    set({ trashed: await notesRepo.listArchived() });
   },
 
   async loadTags() {
@@ -127,13 +138,41 @@ export const useNotes = create<NotesState>((set, get) => ({
   },
 
   async archive(id) {
+    const note = get().notes.find((n) => n.id === id);
     await notesRepo.archive(id);
     set((s) => {
       const notes = s.notes.filter((n) => n.id !== id);
       const selectedId =
         s.selectedId === id ? notes[0]?.id ?? null : s.selectedId;
-      return { notes, selectedId };
+      const trashed = note
+        ? [{ ...note, archived: 1, updated_at: now() }, ...s.trashed]
+        : s.trashed;
+      return { notes, selectedId, trashed };
     });
+  },
+
+  async restore(id) {
+    const note = get().trashed.find((n) => n.id === id);
+    await notesRepo.restore(id);
+    set((s) => ({
+      trashed: s.trashed.filter((n) => n.id !== id),
+      notes: note
+        ? sortNotes([{ ...note, archived: 0, updated_at: now() }, ...s.notes])
+        : s.notes,
+    }));
+  },
+
+  async removeForever(id) {
+    await notesRepo.removeForever(id);
+    set((s) => ({ trashed: s.trashed.filter((n) => n.id !== id) }));
+    // note_tags rows cascaded away; refresh tag counts.
+    await get().loadTags();
+  },
+
+  async emptyTrash() {
+    await notesRepo.emptyTrash();
+    set({ trashed: [] });
+    await get().loadTags();
   },
 
   setActiveTag(id) {
