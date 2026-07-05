@@ -2,6 +2,26 @@ import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
 import type { Note, Task, Sticky, SearchHit, Tag, TagWithCount } from "./types";
 
+/**
+ * Build a `SET` clause from a patch, keeping only allow-listed columns.
+ * Patches come from typed call sites, but the column names end up
+ * interpolated into SQL — the allowlist guarantees nothing else can.
+ */
+function setClause(
+  patch: Record<string, unknown>,
+  allowed: readonly string[]
+): { fields: string[]; values: (string | number | null)[] } {
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
+  for (const key of allowed) {
+    if (key in patch) {
+      fields.push(`${key} = ?`);
+      values.push(patch[key] as string | number | null);
+    }
+  }
+  return { fields, values };
+}
+
 /* ----------------------------- Notes ----------------------------- */
 
 export const notesRepo = {
@@ -40,12 +60,13 @@ export const notesRepo = {
     patch: Partial<Pick<Note, "title" | "content_json" | "body_text" | "icon">>
   ): Promise<void> {
     const db = await getDb();
-    const fields: string[] = [];
-    const values: (string | number)[] = [];
-    for (const [k, v] of Object.entries(patch)) {
-      fields.push(`${k} = ?`);
-      values.push(v as string);
-    }
+    const { fields, values } = setClause(patch, [
+      "title",
+      "content_json",
+      "body_text",
+      "icon",
+    ]);
+    if (!fields.length) return;
     fields.push("updated_at = ?");
     values.push(now());
     values.push(id);
@@ -96,13 +117,14 @@ export const tasksRepo = {
 
   async update(id: string, patch: Partial<Task>): Promise<void> {
     const db = await getDb();
-    const fields: string[] = [];
-    const values: (string | number | null)[] = [];
-    for (const [k, v] of Object.entries(patch)) {
-      if (k === "id") continue;
-      fields.push(`${k} = ?`);
-      values.push(v as number);
-    }
+    const { fields, values } = setClause(patch, [
+      "title",
+      "done",
+      "due_at",
+      "priority",
+      "note_id",
+      "position",
+    ]);
     if (!fields.length) return;
     values.push(id);
     await db.execute(`UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`, values);
@@ -142,13 +164,16 @@ export const stickyRepo = {
 
   async update(id: string, patch: Partial<Sticky>): Promise<void> {
     const db = await getDb();
-    const fields: string[] = [];
-    const values: (string | number | null)[] = [];
-    for (const [k, v] of Object.entries(patch)) {
-      if (k === "id") continue;
-      fields.push(`${k} = ?`);
-      values.push(v as number);
-    }
+    const { fields, values } = setClause(patch, [
+      "content",
+      "color",
+      "x",
+      "y",
+      "width",
+      "height",
+      "pinned",
+    ]);
+    if (!fields.length) return;
     fields.push("updated_at = ?");
     values.push(now());
     values.push(id);
