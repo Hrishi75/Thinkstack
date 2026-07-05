@@ -29,8 +29,18 @@ function parseContent(json: string): PartialBlock[] | undefined {
 /** Editor for a single note. Parent must key this by note.id so it remounts on switch. */
 export default function NoteEditor({ note }: { note: Note }) {
   const theme = useUI((s) => s.theme);
+  const showToast = useUI((s) => s.showToast);
   const saveContent = useNotes((s) => s.saveContent);
   const archive = useNotes((s) => s.archive);
+  const restore = useNotes((s) => s.restore);
+
+  const moveToTrash = async () => {
+    await archive(note.id);
+    showToast("Note moved to trash", {
+      label: "Undo",
+      run: () => restore(note.id),
+    });
+  };
 
   const [title, setTitle] = useState(note.title === "Untitled" ? "" : note.title);
   const [icon, setIcon] = useState(note.icon);
@@ -75,7 +85,7 @@ export default function NoteEditor({ note }: { note: Note }) {
     <div className="flex h-full flex-col">
       <header className="drag-region flex h-10 items-center justify-end px-4">
         <button
-          onClick={() => archive(note.id)}
+          onClick={moveToTrash}
           className="no-drag rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-red-500"
           title="Move to trash"
         >
