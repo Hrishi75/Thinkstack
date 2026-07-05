@@ -7,11 +7,13 @@ import {
   Sun,
   Trash2,
   Plus,
+  Settings2,
 } from "lucide-react";
 import { useUI, type View } from "../store/ui";
 import { useNotes } from "../store/notes";
 import { useTasks } from "../store/tasks";
 import { useSticky } from "../store/sticky";
+import { useAi } from "../store/ai";
 import { cn } from "../lib/util";
 import Logo from "./Logo";
 
@@ -133,14 +135,23 @@ export default function Sidebar() {
       </div>
 
       <div className="flex items-center justify-between px-3 py-2.5">
-        <span className="text-[11px] text-muted/80">v0.1 · local</span>
-        <button
-          onClick={toggleTheme}
-          className="rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-text"
-          title="Toggle theme"
-        >
-          {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-        </button>
+        <span className="text-[11px] text-muted/80">v0.2 · local</span>
+        <div className="flex items-center gap-0.5">
+          <button
+            onClick={() => useAi.getState().setSettingsOpen(true)}
+            className="rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-text"
+            title="Settings"
+          >
+            <Settings2 size={15} />
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-text"
+            title="Toggle theme"
+          >
+            {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </div>
       </div>
     </aside>
   );
