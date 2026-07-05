@@ -10,6 +10,7 @@ import { useUI } from "../../store/ui";
 import { blocksToText, debounce } from "../../lib/util";
 import type { Note } from "../../lib/types";
 import TagBar from "./TagBar";
+import AiPanel from "./AiPanel";
 
 const EMOJIS = [
   "📄", "📝", "📌", "💡", "✅", "🔥", "⭐️", "📚", "🧠", "🎯",
@@ -83,7 +84,8 @@ export default function NoteEditor({ note }: { note: Note }) {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="drag-region flex h-10 items-center justify-end px-4">
+      <header className="drag-region flex h-10 items-center justify-end gap-1 px-4">
+        <AiPanel note={note} editor={editor} />
         <button
           onClick={moveToTrash}
           className="no-drag rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-red-500"
