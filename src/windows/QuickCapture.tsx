@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { emit } from "@tauri-apps/api/event";
@@ -15,6 +15,20 @@ export default function QuickCapture() {
   const [mode, setMode] = useState<Mode>("note");
 
   const close = () => getCurrentWindow().hide();
+
+  // Spotlight behavior: clicking anywhere else dismisses the capture bar.
+  useEffect(() => {
+    const win = getCurrentWindow();
+    let unlisten: (() => void) | undefined;
+    win
+      .onFocusChanged(({ payload: focused }) => {
+        if (!focused) win.hide();
+      })
+      .then((fn) => {
+        unlisten = fn;
+      });
+    return () => unlisten?.();
+  }, []);
 
   const save = async () => {
     const value = text.trim();
