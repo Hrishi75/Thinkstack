@@ -12,11 +12,13 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Plus, CheckSquare } from "lucide-react";
+import { Plus, CheckSquare, CalendarDays, Flag } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTasks } from "../../store/tasks";
 import { cn } from "../../lib/util";
+import { dueLabel, dueTooltip } from "../../lib/dates";
 import TaskItem from "./TaskItem";
+import { Popover, DueMenu, PriorityMenu, PRIORITIES } from "./menus";
 
 type Filter = "all" | "active" | "completed";
 const FILTERS: { key: Filter; label: string }[] = [
@@ -31,6 +33,12 @@ export default function TasksView() {
   const reorder = useTasks((s) => s.reorder);
   const clearCompleted = useTasks((s) => s.clearCompleted);
   const [draft, setDraft] = useState("");
+  const [draftDue, setDraftDue] = useState<number | null>(null);
+  const [draftDueHasTime, setDraftDueHasTime] = useState(0);
+  const [draftPriority, setDraftPriority] = useState(0);
+  const [composerMenu, setComposerMenu] = useState<"due" | "priority" | null>(
+    null
+  );
   const [filter, setFilter] = useState<Filter>("all");
 
   const sensors = useSensors(
@@ -48,9 +56,21 @@ export default function TasksView() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    add(draft);
+    // Keep any picked due/priority when Enter lands on an empty title.
+    if (!draft.trim()) return;
+    add(draft, {
+      due_at: draftDue,
+      due_has_time: draftDueHasTime,
+      priority: draftPriority,
+    });
     setDraft("");
+    setDraftDue(null);
+    setDraftDueHasTime(0);
+    setDraftPriority(0);
+    setComposerMenu(null);
   };
+
+  const draftPrio = PRIORITIES[draftPriority] ?? PRIORITIES[0];
 
   const remaining = tasks.filter((t) => !t.done).length;
   const completedCount = tasks.length - remaining;
@@ -95,8 +115,78 @@ export default function TasksView() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Add a task and press Enter"
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
+              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
             />
+
+            {/* due date for the new task */}
+            <span className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  setComposerMenu((m) => (m === "due" ? null : "due"))
+                }
+                title={
+                  draftDue !== null
+                    ? dueTooltip(draftDue, draftDueHasTime)
+                    : "Due date"
+                }
+                className={cn(
+                  "flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition hover:bg-elevated",
+                  draftDue !== null ? "text-accent" : "text-muted"
+                )}
+              >
+                <CalendarDays size={14} />
+                {draftDue !== null && dueLabel(draftDue, draftDueHasTime)}
+              </button>
+              <Popover
+                open={composerMenu === "due"}
+                onClose={() => setComposerMenu(null)}
+                className="w-56"
+              >
+                <DueMenu
+                  dueAt={draftDue}
+                  hasTime={draftDueHasTime}
+                  onChange={(dueAt, hasTime, close) => {
+                    setDraftDue(dueAt);
+                    setDraftDueHasTime(hasTime);
+                    if (close) setComposerMenu(null);
+                  }}
+                />
+              </Popover>
+            </span>
+
+            {/* priority for the new task */}
+            <span className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() =>
+                  setComposerMenu((m) => (m === "priority" ? null : "priority"))
+                }
+                title={`Priority: ${draftPrio.label}`}
+                className={cn(
+                  "rounded-md p-1 transition hover:bg-elevated",
+                  draftPriority > 0 ? draftPrio.cls : "text-muted"
+                )}
+              >
+                <Flag
+                  size={14}
+                  className={draftPriority > 0 ? "fill-current" : ""}
+                />
+              </button>
+              <Popover
+                open={composerMenu === "priority"}
+                onClose={() => setComposerMenu(null)}
+                className="w-36"
+              >
+                <PriorityMenu
+                  value={draftPriority}
+                  onPick={(p) => {
+                    setDraftPriority(p);
+                    setComposerMenu(null);
+                  }}
+                />
+              </Popover>
+            </span>
           </div>
         </form>
 

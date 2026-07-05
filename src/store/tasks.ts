@@ -24,11 +24,16 @@ function writeTitleDebounced(id: string, title: string) {
   writer(title);
 }
 
+/** Attributes the composer can set on a task before it's created. */
+export type NewTaskExtras = Partial<
+  Pick<Task, "due_at" | "due_has_time" | "priority" | "note_id">
+>;
+
 interface TasksState {
   tasks: Task[];
   loaded: boolean;
   load: () => Promise<void>;
-  add: (title: string) => Promise<void>;
+  add: (title: string, extras?: NewTaskExtras) => Promise<void>;
   toggle: (id: string) => Promise<void>;
   update: (id: string, patch: Partial<Task>) => Promise<void>;
   /** Set/clear the due date (optionally with a time of day); re-arms the reminder unless it's already in the past. */
@@ -48,20 +53,27 @@ export const useTasks = create<TasksState>((set, get) => ({
     set({ tasks: await tasksRepo.list(), loaded: true });
   },
 
-  async add(title) {
+  async add(title, extras) {
     const trimmed = title.trim();
     if (!trimmed) return;
     const minPos = Math.min(0, ...get().tasks.map((t) => t.position));
+    const due_at = extras?.due_at ?? null;
+    const due_has_time = extras?.due_has_time ?? 0;
     const task: Task = {
       id: nanoid(),
       title: trimmed,
       done: 0,
-      due_at: null,
-      due_has_time: 0,
-      priority: 0,
-      note_id: null,
+      due_at,
+      due_has_time,
+      priority: extras?.priority ?? 0,
+      note_id: extras?.note_id ?? null,
       position: minPos - 1,
-      notified: 0,
+      // Same rule as setDue: a reminder moment already in the past
+      // shouldn't fire a pointless notification on the next tick.
+      notified:
+        due_at !== null && reminderAt(due_at, due_has_time) <= Date.now()
+          ? 1
+          : 0,
       created_at: now(),
     };
     await tasksRepo.create(task);

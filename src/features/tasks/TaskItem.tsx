@@ -14,89 +14,14 @@ import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
 import type { Task } from "../../lib/types";
 import { cn } from "../../lib/util";
-
-const PRIORITIES = [
-  { value: 0, label: "None", cls: "text-muted" },
-  { value: 1, label: "Low", cls: "text-sky-500" },
-  { value: 2, label: "Medium", cls: "text-amber-500" },
-  { value: 3, label: "High", cls: "text-red-500" },
-];
-
-const DAY = 86_400_000;
-
-function startOfToday(): number {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-/** Local-midnight timestamp for a yyyy-mm-dd date input value. */
-function dateInputToTs(value: string): number | null {
-  if (!value) return null;
-  const [y, m, d] = value.split("-").map(Number);
-  return new Date(y, m - 1, d).getTime();
-}
-
-function dueLabel(ts: number): string {
-  const diff = Math.round((ts - startOfToday()) / DAY);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Tomorrow";
-  if (diff === -1) return "Yesterday";
-  return new Date(ts).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
-/** Anchored dropdown with a click-away backdrop. Parent must be `relative`. */
-function Popover({
-  open,
-  onClose,
-  children,
-  className,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  if (!open) return null;
-  return (
-    <>
-      <div className="fixed inset-0 z-20" onClick={onClose} />
-      <div
-        className={cn(
-          "absolute right-0 top-7 z-30 rounded-xl border border-border bg-surface p-1 shadow-pop",
-          className
-        )}
-      >
-        {children}
-      </div>
-    </>
-  );
-}
-
-function MenuButton({
-  onClick,
-  children,
-  active,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-  active?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[12.5px] transition hover:bg-elevated",
-        active && "bg-accent/10 text-accent"
-      )}
-    >
-      {children}
-    </button>
-  );
-}
+import { dayStart, startOfToday, dueLabel, dueTooltip } from "../../lib/dates";
+import {
+  Popover,
+  MenuButton,
+  DueMenu,
+  PriorityMenu,
+  PRIORITIES,
+} from "./menus";
 
 export default function TaskItem({ task }: { task: Task }) {
   const toggle = useTasks((s) => s.toggle);
@@ -131,8 +56,13 @@ export default function TaskItem({ task }: { task: Task }) {
   }, [notes, noteQuery]);
 
   const today = startOfToday();
-  const overdue = task.due_at !== null && !task.done && task.due_at < today;
-  const dueToday = task.due_at !== null && !task.done && task.due_at === today;
+  const dueDay = task.due_at !== null ? dayStart(task.due_at) : null;
+  // A timed task turns overdue the minute it passes; an all-day one at midnight.
+  const overdue =
+    task.due_at !== null &&
+    !task.done &&
+    (task.due_has_time ? task.due_at < Date.now() : dueDay! < today);
+  const dueToday = dueDay === today && !task.done && !overdue;
   const priority = PRIORITIES[task.priority] ?? PRIORITIES[0];
 
   const closeMenu = () => {
@@ -141,11 +71,6 @@ export default function TaskItem({ task }: { task: Task }) {
   };
   const openMenu = (m: "due" | "priority" | "link") =>
     setMenu((cur) => (cur === m ? null : m));
-
-  const pickDue = (ts: number | null) => {
-    setDue(task.id, ts);
-    closeMenu();
-  };
 
   const goToNote = () => {
     if (!linkedNote) return;
@@ -205,7 +130,11 @@ export default function TaskItem({ task }: { task: Task }) {
       <span className="relative shrink-0">
         <button
           onClick={() => openMenu("due")}
-          title="Due date"
+          title={
+            task.due_at !== null
+              ? dueTooltip(task.due_at, task.due_has_time)
+              : "Due date"
+          }
           className={cn(
             "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs transition",
             task.due_at !== null
@@ -218,34 +147,17 @@ export default function TaskItem({ task }: { task: Task }) {
           )}
         >
           <CalendarDays size={13} />
-          {task.due_at !== null && dueLabel(task.due_at)}
+          {task.due_at !== null && dueLabel(task.due_at, task.due_has_time)}
         </button>
-        <Popover open={menu === "due"} onClose={closeMenu} className="w-44">
-          <MenuButton onClick={() => pickDue(today)}>Today</MenuButton>
-          <MenuButton onClick={() => pickDue(today + DAY)}>Tomorrow</MenuButton>
-          <MenuButton onClick={() => pickDue(today + 7 * DAY)}>
-            Next week
-          </MenuButton>
-          <div className="mx-2 my-1 border-t border-border" />
-          <div className="px-1 py-1">
-            <input
-              type="date"
-              aria-label="Pick a due date"
-              onChange={(e) => {
-                const ts = dateInputToTs(e.target.value);
-                if (ts !== null) pickDue(ts);
-              }}
-              className="w-full rounded-lg bg-elevated/60 px-2 py-1 text-[12.5px] text-text outline-none"
-            />
-          </div>
-          {task.due_at !== null && (
-            <>
-              <div className="mx-2 my-1 border-t border-border" />
-              <MenuButton onClick={() => pickDue(null)}>
-                <span className="text-red-500">Remove due date</span>
-              </MenuButton>
-            </>
-          )}
+        <Popover open={menu === "due"} onClose={closeMenu} className="w-56">
+          <DueMenu
+            dueAt={task.due_at}
+            hasTime={task.due_has_time}
+            onChange={(dueAt, hasTime, close) => {
+              setDue(task.id, dueAt, hasTime);
+              if (close) closeMenu();
+            }}
+          />
         </Popover>
       </span>
 
@@ -267,22 +179,13 @@ export default function TaskItem({ task }: { task: Task }) {
           />
         </button>
         <Popover open={menu === "priority"} onClose={closeMenu} className="w-36">
-          {PRIORITIES.map((p) => (
-            <MenuButton
-              key={p.value}
-              active={task.priority === p.value}
-              onClick={() => {
-                update(task.id, { priority: p.value });
-                closeMenu();
-              }}
-            >
-              <Flag
-                size={13}
-                className={cn(p.cls, p.value > 0 && "fill-current")}
-              />
-              {p.label}
-            </MenuButton>
-          ))}
+          <PriorityMenu
+            value={task.priority}
+            onPick={(p) => {
+              update(task.id, { priority: p });
+              closeMenu();
+            }}
+          />
         </Popover>
       </span>
 

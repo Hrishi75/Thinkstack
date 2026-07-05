@@ -18,10 +18,10 @@ Your data never leaves your machine — everything lives in a local SQLite datab
 A block-based rich-text editor (BlockNote) for long-form thinking. Each note has a custom emoji icon, can be **pinned** to the top of the list, and **archived** when you're done with it. Pinned notes always sort first, followed by most recently edited.
 
 ### ✅ Tasks
-A focused task list with **priorities** (none / low / medium / high), **due dates** with a quick picker (Today / Tomorrow / Next week / custom), and **drag-to-reorder**. A progress bar tracks completion, filters show live counts, and any task can be **linked to a note** — the note appears as a chip on the task and one click jumps to it.
+A focused task list with **priorities** (none / low / medium / high), **due dates with an optional time** via a quick picker (Today / Tomorrow / Next week / custom date & time), and **drag-to-reorder**. The add bar is a full **composer** — set the due date, time, and priority before the task is created. A progress bar tracks completion, filters show live counts, and any task can be **linked to a note** — the note appears as a chip on the task and one click jumps to it.
 
 ### 🔔 Reminders
-Tasks with a due date fire a **desktop notification** at 9:00 on the due day (each task notifies once; changing the date re-arms it). macOS will ask for notification permission the first time.
+Tasks with a due date fire a **desktop notification** — at the task's due time if one is set, otherwise at 9:00 on the due day (each task notifies once; changing the date or time re-arms it). macOS will ask for notification permission the first time.
 
 ### ✨ AI Assistant (bring your own key)
 Connect your own **Anthropic** or **OpenAI** API key in Settings and use AI right inside your notes: summarize, improve writing, fix grammar, continue writing, extract tasks (added straight to your task list), or ask anything about the current note. Your key is stored in the **system keychain**, requests go **directly from your device to the provider**, and nothing passes through any middleman — if no key is configured, the app makes no network requests at all.
