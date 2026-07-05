@@ -40,6 +40,7 @@ export default function QuickCapture() {
         title: value,
         done: 0,
         due_at: null,
+        due_has_time: 0,
         priority: 0,
         note_id: null,
         position: -now(),

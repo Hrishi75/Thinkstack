@@ -4,12 +4,20 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 
-/** Due-task reminders fire at this local hour on the due day. */
+/** All-day due tasks remind at this local hour on the due day. */
 export const REMINDER_HOUR = 9;
 
-/** The moment a reminder should fire for a due date (stored as local midnight). */
-export function reminderAt(dueAt: number): number {
-  return dueAt + REMINDER_HOUR * 3_600_000;
+/**
+ * The moment a reminder should fire. Tasks with a due time remind exactly
+ * then; all-day tasks (due_at = local midnight) remind at REMINDER_HOUR.
+ */
+export function reminderAt(dueAt: number, hasTime = 0): number {
+  if (hasTime) return dueAt;
+  // Set the wall-clock hour instead of adding a fixed offset, so a DST
+  // change between midnight and the reminder hour doesn't shift it.
+  const d = new Date(dueAt);
+  d.setHours(REMINDER_HOUR, 0, 0, 0);
+  return d.getTime();
 }
 
 let granted: boolean | null = null;

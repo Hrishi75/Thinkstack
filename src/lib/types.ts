@@ -15,6 +15,8 @@ export interface Task {
   title: string;
   done: number;
   due_at: number | null;
+  /** 1 when due_at carries a time of day; 0 means an all-day due date (local midnight). */
+  due_has_time: number;
   priority: number; // 0 none, 1 low, 2 med, 3 high
   note_id: string | null;
   position: number;

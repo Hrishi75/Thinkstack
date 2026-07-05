@@ -146,13 +146,14 @@ export const tasksRepo = {
   async create(task: Task): Promise<void> {
     const db = await getDb();
     await db.execute(
-      `INSERT INTO tasks (id, title, done, due_at, priority, note_id, position, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, done, due_at, due_has_time, priority, note_id, position, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
         task.done,
         task.due_at,
+        task.due_has_time,
         task.priority,
         task.note_id,
         task.position,
@@ -167,6 +168,7 @@ export const tasksRepo = {
       "title",
       "done",
       "due_at",
+      "due_has_time",
       "priority",
       "note_id",
       "position",

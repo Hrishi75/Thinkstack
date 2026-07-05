@@ -79,7 +79,7 @@ not shared in-memory state.
 | Table | Purpose |
 |-------|---------|
 | `notes` | Note documents (`content_json` for BlockNote, `body_text` projection for search), icon, pinned/archived flags |
-| `tasks` | Tasks with priority, due date, fractional `position` for ordering, optional `note_id` FK, and a `notified` flag so due reminders fire once |
+| `tasks` | Tasks with priority, due date (`due_at`, plus `due_has_time` when it carries a time of day), fractional `position` for ordering, optional `note_id` FK, and a `notified` flag so due reminders fire once |
 | `sticky_notes` | Sticky content, color, geometry (x/y/width/height) |
 | `notes_fts` | FTS5 virtual table mirroring note text for search |
 

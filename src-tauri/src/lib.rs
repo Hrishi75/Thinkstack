@@ -115,6 +115,12 @@ pub fn run() {
             sql: include_str!("../migrations/0005_fts_secure_delete.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "add due_has_time column to tasks",
+            sql: include_str!("../migrations/0006_task_due_time.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()

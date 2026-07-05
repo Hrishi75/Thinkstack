@@ -31,8 +31,8 @@ interface TasksState {
   add: (title: string) => Promise<void>;
   toggle: (id: string) => Promise<void>;
   update: (id: string, patch: Partial<Task>) => Promise<void>;
-  /** Set/clear the due date; re-arms the reminder unless it's already in the past. */
-  setDue: (id: string, dueAt: number | null) => Promise<void>;
+  /** Set/clear the due date (optionally with a time of day); re-arms the reminder unless it's already in the past. */
+  setDue: (id: string, dueAt: number | null, hasTime?: number) => Promise<void>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   clearCompleted: () => Promise<void>;
@@ -57,6 +57,7 @@ export const useTasks = create<TasksState>((set, get) => ({
       title: trimmed,
       done: 0,
       due_at: null,
+      due_has_time: 0,
       priority: 0,
       note_id: null,
       position: minPos - 1,
@@ -91,11 +92,12 @@ export const useTasks = create<TasksState>((set, get) => ({
     await tasksRepo.update(id, patch);
   },
 
-  async setDue(id, dueAt) {
+  async setDue(id, dueAt, hasTime = 0) {
     // If the reminder moment for the chosen day already passed (e.g. picking
     // "Today" in the afternoon), don't fire a pointless notification later.
-    const notified = dueAt !== null && reminderAt(dueAt) <= Date.now() ? 1 : 0;
-    await get().update(id, { due_at: dueAt, notified });
+    const notified =
+      dueAt !== null && reminderAt(dueAt, hasTime) <= Date.now() ? 1 : 0;
+    await get().update(id, { due_at: dueAt, due_has_time: hasTime, notified });
   },
 
   async remove(id) {
@@ -129,7 +131,11 @@ export const useTasks = create<TasksState>((set, get) => ({
   async notifyDue() {
     const ts = Date.now();
     const due = get().tasks.filter(
-      (t) => !t.done && !t.notified && t.due_at !== null && reminderAt(t.due_at) <= ts
+      (t) =>
+        !t.done &&
+        !t.notified &&
+        t.due_at !== null &&
+        reminderAt(t.due_at, t.due_has_time) <= ts
     );
     if (!due.length) return;
     // Mark first so an overlapping timer tick can't double-notify.
