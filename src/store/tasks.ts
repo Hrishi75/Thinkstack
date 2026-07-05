@@ -3,6 +3,25 @@ import { nanoid } from "nanoid";
 import type { Task } from "../lib/types";
 import { tasksRepo } from "../lib/repo";
 import { now } from "../lib/db";
+import { debounce } from "../lib/util";
+
+// Title edits arrive one keystroke at a time; batch the DB write per task so
+// typing stays smooth while the in-memory state updates instantly.
+const titleWriters = new Map<
+  string,
+  ((title: string) => void) & { flush: () => void }
+>();
+
+function writeTitleDebounced(id: string, title: string) {
+  let writer = titleWriters.get(id);
+  if (!writer) {
+    writer = debounce((value: string) => {
+      tasksRepo.update(id, { title: value });
+    }, 350);
+    titleWriters.set(id, writer);
+  }
+  writer(title);
+}
 
 interface TasksState {
   tasks: Task[];
@@ -56,10 +75,18 @@ export const useTasks = create<TasksState>((set, get) => ({
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
     }));
+    const keys = Object.keys(patch);
+    if (keys.length === 1 && keys[0] === "title") {
+      writeTitleDebounced(id, patch.title as string);
+      return;
+    }
+    // A mixed patch must not race a pending title write.
+    titleWriters.get(id)?.flush();
     await tasksRepo.update(id, patch);
   },
 
   async remove(id) {
+    titleWriters.delete(id);
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
     await tasksRepo.remove(id);
   },
