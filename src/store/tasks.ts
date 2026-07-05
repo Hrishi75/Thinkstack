@@ -4,6 +4,7 @@ import type { Task } from "../lib/types";
 import { tasksRepo } from "../lib/repo";
 import { now } from "../lib/db";
 import { debounce } from "../lib/util";
+import { notify, reminderAt } from "../lib/notifications";
 
 // Title edits arrive one keystroke at a time; batch the DB write per task so
 // typing stays smooth while the in-memory state updates instantly.
@@ -30,9 +31,13 @@ interface TasksState {
   add: (title: string) => Promise<void>;
   toggle: (id: string) => Promise<void>;
   update: (id: string, patch: Partial<Task>) => Promise<void>;
+  /** Set/clear the due date; re-arms the reminder unless it's already in the past. */
+  setDue: (id: string, dueAt: number | null) => Promise<void>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   clearCompleted: () => Promise<void>;
+  /** Notify (once per task) about tasks whose reminder time has arrived. */
+  notifyDue: () => Promise<void>;
 }
 
 export const useTasks = create<TasksState>((set, get) => ({
@@ -86,6 +91,13 @@ export const useTasks = create<TasksState>((set, get) => ({
     await tasksRepo.update(id, patch);
   },
 
+  async setDue(id, dueAt) {
+    // If the reminder moment for the chosen day already passed (e.g. picking
+    // "Today" in the afternoon), don't fire a pointless notification later.
+    const notified = dueAt !== null && reminderAt(dueAt) <= Date.now() ? 1 : 0;
+    await get().update(id, { due_at: dueAt, notified });
+  },
+
   async remove(id) {
     titleWriters.delete(id);
     set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
@@ -112,5 +124,25 @@ export const useTasks = create<TasksState>((set, get) => ({
     if (!done.length) return;
     set((s) => ({ tasks: s.tasks.filter((t) => !t.done) }));
     await Promise.all(done.map((t) => tasksRepo.remove(t.id)));
+  },
+
+  async notifyDue() {
+    const ts = Date.now();
+    const due = get().tasks.filter(
+      (t) => !t.done && !t.notified && t.due_at !== null && reminderAt(t.due_at) <= ts
+    );
+    if (!due.length) return;
+    // Mark first so an overlapping timer tick can't double-notify.
+    const ids = new Set(due.map((t) => t.id));
+    set((s) => ({
+      tasks: s.tasks.map((t) => (ids.has(t.id) ? { ...t, notified: 1 } : t)),
+    }));
+    await Promise.all(due.map((t) => tasksRepo.update(t.id, { notified: 1 })));
+    const body =
+      due
+        .slice(0, 3)
+        .map((t) => t.title)
+        .join("\n") + (due.length > 3 ? `\n…and ${due.length - 3} more` : "");
+    await notify(due.length === 1 ? "Task due" : `${due.length} tasks due`, body);
   },
 }));
