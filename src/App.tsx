@@ -29,6 +29,7 @@ export default function App() {
   const loadTrash = useNotes((s) => s.loadTrash);
   const createNote = useNotes((s) => s.create);
   const loadTasks = useTasks((s) => s.load);
+  const notifyDue = useTasks((s) => s.notifyDue);
   const loadSticky = useSticky((s) => s.load);
 
   useEffect(() => {
@@ -37,6 +38,17 @@ export default function App() {
     loadTasks();
     loadSticky();
   }, [loadNotes, loadTrash, loadTasks, loadSticky]);
+
+  // Due-task reminders: check shortly after launch (once tasks are loaded),
+  // then once a minute while the app is running.
+  useEffect(() => {
+    const first = setTimeout(notifyDue, 3_000);
+    const timer = setInterval(notifyDue, 60_000);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
+  }, [notifyDue]);
 
   // Live-refresh when another window (quick capture, sticky) writes data.
   useEffect(() => {
