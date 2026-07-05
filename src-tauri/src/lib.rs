@@ -1,9 +1,22 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+/// Sticky ids are client-generated nanoids; reject anything else before the
+/// id is embedded in a window label and webview URL.
+fn is_valid_sticky_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 36
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
 /// Open (or focus) a floating sticky-note window for the given sticky id.
 #[tauri::command]
 async fn open_sticky(app: tauri::AppHandle, id: String) -> Result<(), String> {
+    if !is_valid_sticky_id(&id) {
+        return Err("invalid sticky id".into());
+    }
     let label = format!("sticky-{id}");
     if let Some(win) = app.get_webview_window(&label) {
         let _ = win.set_focus();
