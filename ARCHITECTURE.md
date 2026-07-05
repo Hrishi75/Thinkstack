@@ -104,6 +104,10 @@ surface in search.
 - **Commands** — Rust commands validate their inputs (e.g. `open_sticky`
   rejects ids that aren't client-generated nanoids) before using them in
   window labels or URLs.
+- **AI keys** — bring-your-own-key AI (`src-tauri/src/ai.rs`) stores keys in
+  the OS keychain and makes all provider HTTP calls from Rust, so the key
+  never enters the webview after entry and the CSP stays closed to remote
+  hosts. The frontend only ever learns *whether* a key is saved.
 
 ## Conventions
 

@@ -23,6 +23,9 @@ A focused task list with **priorities** (none / low / medium / high), **due date
 ### 🔔 Reminders
 Tasks with a due date fire a **desktop notification** at 9:00 on the due day (each task notifies once; changing the date re-arms it). macOS will ask for notification permission the first time.
 
+### ✨ AI Assistant (bring your own key)
+Connect your own **Anthropic** or **OpenAI** API key in Settings and use AI right inside your notes: summarize, improve writing, fix grammar, continue writing, extract tasks (added straight to your task list), or ask anything about the current note. Your key is stored in the **system keychain**, requests go **directly from your device to the provider**, and nothing passes through any middleman — if no key is configured, the app makes no network requests at all.
+
 ### 🗒️ Sticky Notes
 Lightweight sticky notes in six colors. Pop any sticky out into its own **frameless, always-on-top floating window** that stays visible over other apps — perfect for reminders and scratch thoughts. Position and size are remembered.
 
