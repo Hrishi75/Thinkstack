@@ -85,6 +85,34 @@ export const notesRepo = {
       id,
     ]);
   },
+
+  /** Archived notes, most recently trashed first. */
+  async listArchived(): Promise<Note[]> {
+    const db = await getDb();
+    return db.select<Note[]>(
+      "SELECT * FROM notes WHERE archived = 1 ORDER BY updated_at DESC"
+    );
+  },
+
+  async restore(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("UPDATE notes SET archived = 0, updated_at = ? WHERE id = ?", [
+      now(),
+      id,
+    ]);
+  },
+
+  /** Permanently delete a note; note_tags cascade and FTS triggers clean up. */
+  async removeForever(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM notes WHERE id = ?", [id]);
+  },
+
+  /** Permanently delete every archived note. */
+  async emptyTrash(): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM notes WHERE archived = 1");
+  },
 };
 
 /* ----------------------------- Tasks ----------------------------- */
