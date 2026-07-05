@@ -39,8 +39,8 @@ repository. This keeps queries in one place and views easy to reason about.
 ### Stores
 
 Each domain has its own Zustand store (`notes`, `tasks`, `sticky`), plus a `ui`
-store for cross-cutting state: the active view, theme, and command-palette
-visibility. Stores load data on startup and re-fetch when the underlying data
+store for cross-cutting state: the active view, theme, command-palette
+visibility, and the transient toast (used for undo after deleting a note). Stores load data on startup and re-fetch when the underlying data
 changes (see *Multi-Window* below).
 
 ## Multi-Window Model
@@ -79,7 +79,7 @@ not shared in-memory state.
 | Table | Purpose |
 |-------|---------|
 | `notes` | Note documents (`content_json` for BlockNote, `body_text` projection for search), icon, pinned/archived flags |
-| `tasks` | Tasks with priority, due date, fractional `position` for ordering, optional `note_id` FK |
+| `tasks` | Tasks with priority, due date, fractional `position` for ordering, optional `note_id` FK, and a `notified` flag so due reminders fire once |
 | `sticky_notes` | Sticky content, color, geometry (x/y/width/height) |
 | `notes_fts` | FTS5 virtual table mirroring note text for search |
 
@@ -89,7 +89,21 @@ not shared in-memory state.
 sync with `notes` via `AFTER INSERT/UPDATE/DELETE` triggers. The
 `searchNotes()` helper sanitizes user input into a safe prefix query
 (`"term"* AND …`) and returns ranked results with highlighted `snippet()`
-fragments.
+fragments. Results join back to `notes` so trashed (archived) notes never
+surface in search.
+
+## Security
+
+- **CSP** — a strict Content-Security-Policy is set in `tauri.conf.json`
+  (no remote scripts, no remote connects; a looser `devCsp` allows Vite HMR).
+- **Capabilities** — windows get only the Tauri permissions they use, listed
+  in `src-tauri/capabilities/default.json` (`sql:default` is read-only;
+  writes additionally require `sql:allow-execute`).
+- **SQL** — all queries are parameterized; dynamically built `UPDATE` clauses
+  only accept allow-listed column names (`setClause()` in `repo.ts`).
+- **Commands** — Rust commands validate their inputs (e.g. `open_sticky`
+  rejects ids that aren't client-generated nanoids) before using them in
+  window labels or URLs.
 
 ## Conventions
 
