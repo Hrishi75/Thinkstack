@@ -54,6 +54,25 @@ body.window-capture {
   background: transparent;
 }
 
+/* Text selection + caret pick up the accent color */
+::selection {
+  background: rgb(var(--accent) / 0.22);
+}
+input,
+textarea,
+[contenteditable] {
+  caret-color: rgb(var(--accent));
+}
+
+/* Visible focus ring for keyboard navigation only */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid rgb(var(--accent) / 0.45);
+  outline-offset: 1px;
+}
+
 /* Draggable title-bar region (macOS) */
 .drag-region {
   -webkit-app-region: drag;
