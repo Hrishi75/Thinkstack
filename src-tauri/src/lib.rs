@@ -1,6 +1,8 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod ai;
+
 /// Sticky ids are client-generated nanoids; reject anything else before the
 /// id is embedded in a window label and webview URL.
 fn is_valid_sticky_id(id: &str) -> bool {
@@ -107,6 +109,12 @@ pub fn run() {
             sql: include_str!("../migrations/0004_task_notified.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 5,
+            description: "enable fts5 secure-delete",
+            sql: include_str!("../migrations/0005_fts_secure_delete.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()
@@ -153,7 +161,11 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_sticky,
             toggle_quick_capture,
-            show_main
+            show_main,
+            ai::ai_set_key,
+            ai::ai_has_key,
+            ai::ai_clear_key,
+            ai::ai_complete
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
