@@ -276,11 +276,13 @@ export async function searchNotes(raw: string): Promise<SearchHit[]> {
   const q = toFtsQuery(raw);
   if (!q) return [];
   const db = await getDb();
+  // Join back to notes so trashed (archived) notes never surface in search.
   return db.select<SearchHit[]>(
-    `SELECT note_id,
-            title,
+    `SELECT notes_fts.note_id,
+            notes_fts.title,
             snippet(notes_fts, 2, '⟦', '⟧', '…', 12) AS snippet
      FROM notes_fts
+     JOIN notes n ON n.id = notes_fts.note_id AND n.archived = 0
      WHERE notes_fts MATCH ?
      ORDER BY rank
      LIMIT 30`,
