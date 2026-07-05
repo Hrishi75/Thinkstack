@@ -5,8 +5,10 @@ import { useUI, type View } from "./store/ui";
 import { useNotes } from "./store/notes";
 import { useTasks } from "./store/tasks";
 import { useSticky } from "./store/sticky";
+import { useAi } from "./store/ai";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
+import SettingsModal from "./components/SettingsModal";
 import NotesView from "./features/notes/NotesView";
 import TasksView from "./features/tasks/TasksView";
 import StickyView from "./features/sticky/StickyView";
@@ -31,13 +33,15 @@ export default function App() {
   const loadTasks = useTasks((s) => s.load);
   const notifyDue = useTasks((s) => s.notifyDue);
   const loadSticky = useSticky((s) => s.load);
+  const initAi = useAi((s) => s.init);
 
   useEffect(() => {
     loadNotes();
     loadTrash();
     loadTasks();
     loadSticky();
-  }, [loadNotes, loadTrash, loadTasks, loadSticky]);
+    initAi();
+  }, [loadNotes, loadTrash, loadTasks, loadSticky, initAi]);
 
   // Due-task reminders: check shortly after launch (once tasks are loaded),
   // then once a minute while the app is running.
@@ -100,6 +104,7 @@ export default function App() {
         </motion.div>
       </main>
       <CommandPalette />
+      <SettingsModal />
       <Toast />
     </div>
   );
