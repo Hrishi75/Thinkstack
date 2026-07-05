@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 Thinkstack
+<img src="src-tauri/icons/128x128.png" alt="Thinkstack logo" width="96" />
+
+# Thinkstack
 
 **A fast, local-first desktop workspace for notes, tasks, and sticky notes.**
 
