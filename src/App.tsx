@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { motion } from "motion/react";
 import { listen } from "@tauri-apps/api/event";
-import { useUI } from "./store/ui";
+import { useUI, type View } from "./store/ui";
 import { useNotes } from "./store/notes";
 import { useTasks } from "./store/tasks";
 import { useSticky } from "./store/sticky";
@@ -13,12 +13,21 @@ import StickyView from "./features/sticky/StickyView";
 import TrashView from "./features/trash/TrashView";
 import CommandPalette from "./features/search/CommandPalette";
 
+const VIEW_KEYS: Record<string, View> = {
+  "1": "notes",
+  "2": "tasks",
+  "3": "sticky",
+  "4": "trash",
+};
+
 export default function App() {
   const view = useUI((s) => s.view);
+  const setView = useUI((s) => s.setView);
   const setCommandOpen = useUI((s) => s.setCommandOpen);
 
   const loadNotes = useNotes((s) => s.load);
   const loadTrash = useNotes((s) => s.loadTrash);
+  const createNote = useNotes((s) => s.create);
   const loadTasks = useTasks((s) => s.load);
   const loadSticky = useSticky((s) => s.load);
 
@@ -43,14 +52,22 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+      if (key === "k") {
         e.preventDefault();
         setCommandOpen(true);
+      } else if (key === "n" && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        createNote().then(() => setView("notes"));
+      } else if (VIEW_KEYS[key] && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        setView(VIEW_KEYS[key]);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [setCommandOpen]);
+  }, [setCommandOpen, setView, createNote]);
 
   return (
     <div className="flex h-full w-full bg-bg text-text">
