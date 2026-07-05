@@ -7,6 +7,7 @@ import { notesRepo, tasksRepo } from "../lib/repo";
 import { now } from "../lib/db";
 import { deriveTitle } from "../lib/util";
 import { cn } from "../lib/util";
+import Logo from "../components/Logo";
 
 type Mode = "note" | "task";
 
@@ -82,6 +83,7 @@ export default function QuickCapture() {
     <div className="flex h-screen w-screen items-start justify-center p-2">
       <div className="w-full overflow-hidden rounded-2xl border border-border bg-surface/95 shadow-pop backdrop-blur">
         <div className="drag-region flex items-center gap-2 px-4 pt-3 text-xs text-muted">
+          <Logo size={14} />
           <span>Quick capture</span>
           <span className="ml-auto">⏎ save · ⇥ switch · esc close</span>
         </div>
