@@ -186,8 +186,8 @@ export default function AiPanel({
                   <Sparkles size={22} className="text-accent" />
                   <p className="text-[13px] font-medium">Connect an AI provider</p>
                   <p className="text-[12px] text-muted">
-                    Add your own Anthropic or OpenAI API key to use AI on your
-                    notes. Keys stay on this device.
+                    Add your own Anthropic, OpenAI, or Groq API key to use AI
+                    on your notes. Keys stay on this device.
                   </p>
                   <button
                     onClick={() => {
