@@ -105,14 +105,27 @@ export default function TaskItem({ task }: { task: Task }) {
         {task.done ? <Check size={13} strokeWidth={3} /> : null}
       </button>
 
-      <input
-        value={task.title}
-        onChange={(e) => update(task.id, { title: e.target.value })}
-        className={cn(
-          "min-w-0 flex-1 bg-transparent text-sm outline-none transition-colors duration-200",
-          !!task.done && "text-muted line-through"
+      <div className="min-w-0 flex-1">
+        <input
+          value={task.title}
+          onChange={(e) => update(task.id, { title: e.target.value })}
+          className={cn(
+            "w-full bg-transparent text-sm outline-none transition-colors duration-200",
+            !!task.done && "text-muted line-through"
+          )}
+        />
+        {task.description && (
+          <div
+            className={cn(
+              "truncate text-xs text-muted",
+              !!task.done && "line-through opacity-60"
+            )}
+            title={task.description}
+          >
+            {task.description}
+          </div>
         )}
-      />
+      </div>
 
       {/* linked note chip */}
       {linkedNote && (

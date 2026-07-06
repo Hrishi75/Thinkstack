@@ -12,13 +12,12 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Plus, CheckSquare, CalendarDays, Flag } from "lucide-react";
+import { Plus, CheckSquare } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTasks } from "../../store/tasks";
 import { cn } from "../../lib/util";
-import { dueLabel, dueTooltip } from "../../lib/dates";
 import TaskItem from "./TaskItem";
-import { Popover, DueMenu, PriorityMenu, PRIORITIES } from "./menus";
+import NewTaskModal from "./NewTaskModal";
 
 type Filter = "all" | "active" | "completed";
 const FILTERS: { key: Filter; label: string }[] = [
@@ -29,16 +28,9 @@ const FILTERS: { key: Filter; label: string }[] = [
 
 export default function TasksView() {
   const tasks = useTasks((s) => s.tasks);
-  const add = useTasks((s) => s.add);
   const reorder = useTasks((s) => s.reorder);
   const clearCompleted = useTasks((s) => s.clearCompleted);
-  const [draft, setDraft] = useState("");
-  const [draftDue, setDraftDue] = useState<number | null>(null);
-  const [draftDueHasTime, setDraftDueHasTime] = useState(0);
-  const [draftPriority, setDraftPriority] = useState(0);
-  const [composerMenu, setComposerMenu] = useState<"due" | "priority" | null>(
-    null
-  );
+  const [modalOpen, setModalOpen] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
 
   const sensors = useSensors(
@@ -54,24 +46,6 @@ export default function TasksView() {
     reorder(arrayMove(ids, from, to));
   };
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Keep any picked due/priority when Enter lands on an empty title.
-    if (!draft.trim()) return;
-    add(draft, {
-      due_at: draftDue,
-      due_has_time: draftDueHasTime,
-      priority: draftPriority,
-    });
-    setDraft("");
-    setDraftDue(null);
-    setDraftDueHasTime(0);
-    setDraftPriority(0);
-    setComposerMenu(null);
-  };
-
-  const draftPrio = PRIORITIES[draftPriority] ?? PRIORITIES[0];
-
   const remaining = tasks.filter((t) => !t.done).length;
   const completedCount = tasks.length - remaining;
   const pct = tasks.length ? Math.round((completedCount / tasks.length) * 100) : 0;
@@ -85,13 +59,21 @@ export default function TasksView() {
     <div className="flex h-full flex-col">
       <header className="drag-region flex h-11 items-center px-6" />
       <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col overflow-hidden px-6">
-        <div className="flex items-baseline justify-between pb-3">
-          <h2 className="text-xl font-semibold">Tasks</h2>
-          <span className="text-sm text-muted">
-            {remaining === 0 && tasks.length > 0
-              ? "All done 🎉"
-              : `${remaining} remaining`}
-          </span>
+        <div className="flex items-center justify-between pb-3">
+          <div className="flex items-baseline gap-3">
+            <h2 className="text-xl font-semibold">Tasks</h2>
+            <span className="text-sm text-muted">
+              {remaining === 0 && tasks.length > 0
+                ? "All done 🎉"
+                : `${remaining} remaining`}
+            </span>
+          </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="no-drag flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft transition hover:opacity-90"
+          >
+            <Plus size={16} /> New task
+          </button>
         </div>
 
         {tasks.length > 0 && (
@@ -107,88 +89,6 @@ export default function TasksView() {
             </span>
           </div>
         )}
-
-        <form onSubmit={submit} className="no-drag mb-3">
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 focus-within:border-accent/50">
-            <Plus size={17} className="text-muted" />
-            <input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Add a task and press Enter"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted"
-            />
-
-            {/* due date for the new task */}
-            <span className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() =>
-                  setComposerMenu((m) => (m === "due" ? null : "due"))
-                }
-                title={
-                  draftDue !== null
-                    ? dueTooltip(draftDue, draftDueHasTime)
-                    : "Due date"
-                }
-                className={cn(
-                  "flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition hover:bg-elevated",
-                  draftDue !== null ? "text-accent" : "text-muted"
-                )}
-              >
-                <CalendarDays size={14} />
-                {draftDue !== null && dueLabel(draftDue, draftDueHasTime)}
-              </button>
-              <Popover
-                open={composerMenu === "due"}
-                onClose={() => setComposerMenu(null)}
-                className="w-56"
-              >
-                <DueMenu
-                  dueAt={draftDue}
-                  hasTime={draftDueHasTime}
-                  onChange={(dueAt, hasTime, close) => {
-                    setDraftDue(dueAt);
-                    setDraftDueHasTime(hasTime);
-                    if (close) setComposerMenu(null);
-                  }}
-                />
-              </Popover>
-            </span>
-
-            {/* priority for the new task */}
-            <span className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() =>
-                  setComposerMenu((m) => (m === "priority" ? null : "priority"))
-                }
-                title={`Priority: ${draftPrio.label}`}
-                className={cn(
-                  "rounded-md p-1 transition hover:bg-elevated",
-                  draftPriority > 0 ? draftPrio.cls : "text-muted"
-                )}
-              >
-                <Flag
-                  size={14}
-                  className={draftPriority > 0 ? "fill-current" : ""}
-                />
-              </button>
-              <Popover
-                open={composerMenu === "priority"}
-                onClose={() => setComposerMenu(null)}
-                className="w-36"
-              >
-                <PriorityMenu
-                  value={draftPriority}
-                  onPick={(p) => {
-                    setDraftPriority(p);
-                    setComposerMenu(null);
-                  }}
-                />
-              </Popover>
-            </span>
-          </div>
-        </form>
 
         {tasks.length > 0 && (
           <div className="no-drag mb-2 flex items-center justify-between">
@@ -225,7 +125,13 @@ export default function TasksView() {
         {tasks.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
             <CheckSquare size={28} className="opacity-40" />
-            <p>No tasks yet — add one above.</p>
+            <p>No tasks yet.</p>
+            <button
+              onClick={() => setModalOpen(true)}
+              className="mt-1 rounded-md bg-accent/15 px-3 py-1.5 text-accent transition hover:bg-accent/25"
+            >
+              Create a task
+            </button>
           </div>
         ) : visible.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
@@ -266,6 +172,8 @@ export default function TasksView() {
           </div>
         )}
       </div>
+
+      <NewTaskModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 }

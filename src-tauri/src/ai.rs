@@ -13,7 +13,7 @@ const MAX_PROMPT_CHARS: usize = 100_000;
 
 fn validate_provider(provider: &str) -> Result<(), String> {
     match provider {
-        "anthropic" | "openai" => Ok(()),
+        "anthropic" | "openai" | "groq" => Ok(()),
         _ => Err("unknown AI provider".into()),
     }
 }
@@ -112,15 +112,17 @@ async fn complete_anthropic(
     Ok(text)
 }
 
-async fn complete_openai(
+/// OpenAI chat-completions protocol, also spoken by Groq.
+async fn complete_openai_compatible(
     client: &reqwest::Client,
+    url: &str,
     key: &str,
     model: &str,
     system: &str,
     prompt: &str,
 ) -> Result<String, String> {
     let resp = client
-        .post("https://api.openai.com/v1/chat/completions")
+        .post(url)
         .bearer_auth(key)
         .json(&json!({
             "model": model,
@@ -174,6 +176,27 @@ pub async fn ai_complete(
 
     match provider.as_str() {
         "anthropic" => complete_anthropic(&client, &key, &model, &system, &prompt).await,
-        _ => complete_openai(&client, &key, &model, &system, &prompt).await,
+        "groq" => {
+            complete_openai_compatible(
+                &client,
+                "https://api.groq.com/openai/v1/chat/completions",
+                &key,
+                &model,
+                &system,
+                &prompt,
+            )
+            .await
+        }
+        _ => {
+            complete_openai_compatible(
+                &client,
+                "https://api.openai.com/v1/chat/completions",
+                &key,
+                &model,
+                &system,
+                &prompt,
+            )
+            .await
+        }
     }
 }

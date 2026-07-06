@@ -13,6 +13,8 @@ export interface Note {
 export interface Task {
   id: string;
   title: string;
+  /** Optional free-form details shown under the title. */
+  description: string;
   done: number;
   due_at: number | null;
   /** 1 when due_at carries a time of day; 0 means an all-day due date (local midnight). */

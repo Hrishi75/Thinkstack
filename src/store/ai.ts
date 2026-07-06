@@ -1,17 +1,19 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
-export type AiProvider = "anthropic" | "openai";
+export type AiProvider = "anthropic" | "openai" | "groq";
 
 export const PROVIDERS: { key: AiProvider; label: string }[] = [
   { key: "anthropic", label: "Anthropic" },
   { key: "openai", label: "OpenAI" },
+  { key: "groq", label: "Groq" },
 ];
 
 /** Sensible defaults; the model field is free-text so users can pick any model. */
 export const DEFAULT_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-opus-4-8",
   openai: "gpt-4o-mini",
+  groq: "llama-3.3-70b-versatile",
 };
 
 const PROVIDER_KEY = "thinkstack.ai.provider";
@@ -24,7 +26,7 @@ const SYSTEM_PROMPT =
 
 function storedProvider(): AiProvider {
   const p = localStorage.getItem(PROVIDER_KEY);
-  return p === "openai" ? "openai" : "anthropic";
+  return p === "openai" || p === "groq" ? p : "anthropic";
 }
 
 function storedModel(p: AiProvider): string {

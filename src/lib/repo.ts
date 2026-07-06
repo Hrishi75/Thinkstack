@@ -146,11 +146,12 @@ export const tasksRepo = {
   async create(task: Task): Promise<void> {
     const db = await getDb();
     await db.execute(
-      `INSERT INTO tasks (id, title, done, due_at, due_has_time, priority, note_id, position, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO tasks (id, title, description, done, due_at, due_has_time, priority, note_id, position, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         task.id,
         task.title,
+        task.description,
         task.done,
         task.due_at,
         task.due_has_time,
@@ -166,6 +167,7 @@ export const tasksRepo = {
     const db = await getDb();
     const { fields, values } = setClause(patch, [
       "title",
+      "description",
       "done",
       "due_at",
       "due_has_time",

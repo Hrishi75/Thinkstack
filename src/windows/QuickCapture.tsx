@@ -38,6 +38,7 @@ export default function QuickCapture() {
       await tasksRepo.create({
         id: nanoid(),
         title: value,
+        description: "",
         done: 0,
         due_at: null,
         due_has_time: 0,

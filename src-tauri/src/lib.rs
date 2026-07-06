@@ -121,6 +121,12 @@ pub fn run() {
             sql: include_str!("../migrations/0006_task_due_time.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 7,
+            description: "add description column to tasks",
+            sql: include_str!("../migrations/0007_task_description.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()

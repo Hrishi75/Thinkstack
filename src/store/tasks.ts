@@ -26,7 +26,7 @@ function writeTitleDebounced(id: string, title: string) {
 
 /** Attributes the composer can set on a task before it's created. */
 export type NewTaskExtras = Partial<
-  Pick<Task, "due_at" | "due_has_time" | "priority" | "note_id">
+  Pick<Task, "description" | "due_at" | "due_has_time" | "priority" | "note_id">
 >;
 
 interface TasksState {
@@ -62,6 +62,7 @@ export const useTasks = create<TasksState>((set, get) => ({
     const task: Task = {
       id: nanoid(),
       title: trimmed,
+      description: extras?.description?.trim() ?? "",
       done: 0,
       due_at,
       due_has_time,

@@ -1,4 +1,4 @@
-import { Bell, BellOff, Flag } from "lucide-react";
+import { Bell, BellOff, CalendarDays, Flag, X } from "lucide-react";
 import { cn } from "../../lib/util";
 import { reminderLabel } from "../../lib/notifications";
 import {
@@ -10,6 +10,7 @@ import {
   toTimeInput,
   weekdayShort,
   monthDay,
+  dueLabel,
 } from "../../lib/dates";
 
 export const PRIORITIES = [
@@ -182,6 +183,53 @@ export function ReminderHint({
           <span>No reminder — that time already passed</span>
         </>
       )}
+    </div>
+  );
+}
+
+/** "Due … · Reminds …" strip shown while composing a task with a due date. */
+export function ScheduleSummary({
+  dueAt,
+  hasTime,
+  onClear,
+  className,
+}: {
+  dueAt: number;
+  hasTime: number;
+  onClear: () => void;
+  className?: string;
+}) {
+  const remind = reminderLabel(dueAt, hasTime);
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 text-[11.5px] text-muted",
+        className
+      )}
+    >
+      <span className="flex items-center gap-1.5">
+        <CalendarDays size={12} className="shrink-0 text-accent" />
+        Due {dueLabel(dueAt, hasTime)}
+      </span>
+      {remind ? (
+        <span className="flex items-center gap-1.5">
+          <Bell size={12} className="shrink-0" />
+          Reminds {remind}
+        </span>
+      ) : (
+        <span className="flex items-center gap-1.5">
+          <BellOff size={12} className="shrink-0" />
+          No reminder — that time already passed
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={onClear}
+        title="Remove due date"
+        className="ml-auto rounded p-0.5 transition hover:bg-elevated hover:text-text"
+      >
+        <X size={12} />
+      </button>
     </div>
   );
 }

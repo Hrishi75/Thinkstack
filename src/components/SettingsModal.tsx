@@ -28,7 +28,8 @@ export default function SettingsModal() {
     }
   }, [open, provider]);
 
-  const providerLabel = provider === "anthropic" ? "Anthropic" : "OpenAI";
+  const providerLabel =
+    PROVIDERS.find((p) => p.key === provider)?.label ?? provider;
 
   const save = async () => {
     if (!keyDraft.trim()) return;
@@ -142,7 +143,9 @@ export default function SettingsModal() {
                         ? "Enter a new key to replace the saved one"
                         : provider === "anthropic"
                           ? "sk-ant-…"
-                          : "sk-…"
+                          : provider === "groq"
+                            ? "gsk_…"
+                            : "sk-…"
                     }
                     className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none transition focus:border-accent/60"
                   />
