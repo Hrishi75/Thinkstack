@@ -1,5 +1,6 @@
-import { Flag } from "lucide-react";
+import { Bell, BellOff, Flag } from "lucide-react";
 import { cn } from "../../lib/util";
+import { reminderLabel } from "../../lib/notifications";
 import {
   DAY,
   startOfToday,
@@ -141,6 +142,7 @@ export function DueMenu({
       </div>
       {dueAt !== null && (
         <>
+          <ReminderHint dueAt={dueAt} hasTime={hasTime} />
           <div className="mx-2 my-1 border-t border-border" />
           <MenuButton onClick={() => onChange(null, 0, true)}>
             <span className="text-red-500">Remove due date</span>
@@ -148,6 +150,39 @@ export function DueMenu({
         </>
       )}
     </>
+  );
+}
+
+/** One-line note on when (or whether) the reminder notification will fire. */
+export function ReminderHint({
+  dueAt,
+  hasTime,
+  className,
+}: {
+  dueAt: number;
+  hasTime: number;
+  className?: string;
+}) {
+  const label = reminderLabel(dueAt, hasTime);
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1.5 px-2.5 pb-1 pt-1.5 text-[11px] text-muted",
+        className
+      )}
+    >
+      {label ? (
+        <>
+          <Bell size={11} className="shrink-0" />
+          <span>Reminds {label}</span>
+        </>
+      ) : (
+        <>
+          <BellOff size={11} className="shrink-0" />
+          <span>No reminder — that time already passed</span>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -3,6 +3,7 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
+import { dueLabel, formatTime } from "./dates";
 
 /** All-day due tasks remind at this local hour on the due day. */
 export const REMINDER_HOUR = 9;
@@ -18,6 +19,16 @@ export function reminderAt(dueAt: number, hasTime = 0): number {
   const d = new Date(dueAt);
   d.setHours(REMINDER_HOUR, 0, 0, 0);
   return d.getTime();
+}
+
+/**
+ * Human label for when the reminder will fire ("Tomorrow at 9:00 AM"),
+ * or null when that moment has already passed and no reminder will come.
+ */
+export function reminderLabel(dueAt: number, hasTime = 0): string | null {
+  const at = reminderAt(dueAt, hasTime);
+  if (at <= Date.now()) return null;
+  return `${dueLabel(at, 0)} at ${formatTime(at)}`;
 }
 
 let granted: boolean | null = null;
