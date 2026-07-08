@@ -1,6 +1,7 @@
-import { Bell, BellOff, CalendarDays, Flag, X } from "lucide-react";
+import { Bell, BellOff, CalendarDays, Flag, Repeat, X } from "lucide-react";
 import { cn } from "../../lib/util";
 import { reminderLabel } from "../../lib/notifications";
+import { RECURRENCE_LABELS, type Recurrence } from "../../lib/types";
 import {
   DAY,
   startOfToday,
@@ -74,33 +75,46 @@ export function MenuButton({
 }
 
 /**
- * Contents of the due-date menu: quick picks, custom date & time, remove.
- * Quick picks and remove report close=true; the date/time inputs keep the
- * menu open so both can be adjusted before dismissing.
+ * Contents of the due-date menu: quick picks, custom date & time, repeat,
+ * remove. Quick picks and remove report close=true; the date/time/repeat
+ * inputs keep the menu open so they can be adjusted before dismissing.
  */
 export function DueMenu({
   dueAt,
   hasTime,
+  recur,
   onChange,
 }: {
   dueAt: number | null;
   hasTime: number;
-  onChange: (dueAt: number | null, hasTime: number, close: boolean) => void;
+  recur: Recurrence | null;
+  onChange: (
+    dueAt: number | null,
+    hasTime: number,
+    recur: Recurrence | null,
+    close: boolean
+  ) => void;
 }) {
   const today = startOfToday();
 
   // Change the due day, carrying any chosen time of day along.
   const applyDay = (day: number, close: boolean) => {
     if (dueAt !== null && hasTime)
-      onChange(day + (dueAt - dayStart(dueAt)), 1, close);
-    else onChange(day, 0, close);
+      onChange(day + (dueAt - dayStart(dueAt)), 1, recur, close);
+    else onChange(day, 0, recur, close);
   };
   // Set or clear the time of day; an empty value returns to all-day.
   const pickTime = (value: string) => {
     const base = dueAt !== null ? dayStart(dueAt) : today;
-    if (!value) return onChange(base, 0, false);
+    if (!value) return onChange(base, 0, recur, false);
     const [h, m] = value.split(":").map(Number);
-    onChange(base + (h * 60 + m) * 60_000, 1, false);
+    onChange(base + (h * 60 + m) * 60_000, 1, recur, false);
+  };
+  // A repeat needs a date to roll forward from; default to today if unset.
+  const pickRecur = (value: string) => {
+    const next = (value || null) as Recurrence | null;
+    if (dueAt !== null) onChange(dueAt, hasTime, next, false);
+    else onChange(next ? today : null, 0, next, false);
   };
 
   return (
@@ -119,7 +133,7 @@ export function DueMenu({
       </MenuButton>
       <div className="mx-2 my-1 border-t border-border" />
       <div className="flex items-center gap-2 px-2 py-1">
-        <span className="w-8 shrink-0 text-[11px] text-muted">Date</span>
+        <span className="w-12 shrink-0 text-[11px] text-muted">Date</span>
         <input
           type="date"
           aria-label="Due date"
@@ -132,7 +146,7 @@ export function DueMenu({
         />
       </div>
       <div className="flex items-center gap-2 px-2 py-1">
-        <span className="w-8 shrink-0 text-[11px] text-muted">Time</span>
+        <span className="w-12 shrink-0 text-[11px] text-muted">Time</span>
         <input
           type="time"
           aria-label="Due time"
@@ -141,11 +155,27 @@ export function DueMenu({
           className="flex-1 rounded-lg bg-elevated/60 px-2 py-1 text-[12.5px] text-text outline-none"
         />
       </div>
+      <div className="flex items-center gap-2 px-2 py-1">
+        <span className="w-12 shrink-0 text-[11px] text-muted">Repeat</span>
+        <select
+          aria-label="Repeat"
+          value={recur ?? ""}
+          onChange={(e) => pickRecur(e.target.value)}
+          className="flex-1 rounded-lg bg-elevated/60 px-2 py-1 text-[12.5px] text-text outline-none"
+        >
+          <option value="">No repeat</option>
+          {Object.entries(RECURRENCE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
       {dueAt !== null && (
         <>
           <ReminderHint dueAt={dueAt} hasTime={hasTime} />
           <div className="mx-2 my-1 border-t border-border" />
-          <MenuButton onClick={() => onChange(null, 0, true)}>
+          <MenuButton onClick={() => onChange(null, 0, null, true)}>
             <span className="text-red-500">Remove due date</span>
           </MenuButton>
         </>
@@ -191,11 +221,13 @@ export function ReminderHint({
 export function ScheduleSummary({
   dueAt,
   hasTime,
+  recur,
   onClear,
   className,
 }: {
   dueAt: number;
   hasTime: number;
+  recur?: Recurrence | null;
   onClear: () => void;
   className?: string;
 }) {
@@ -211,6 +243,12 @@ export function ScheduleSummary({
         <CalendarDays size={12} className="shrink-0 text-accent" />
         Due {dueLabel(dueAt, hasTime)}
       </span>
+      {recur && (
+        <span className="flex items-center gap-1.5">
+          <Repeat size={12} className="shrink-0" />
+          Repeats {RECURRENCE_LABELS[recur].toLowerCase()}
+        </span>
+      )}
       {remind ? (
         <span className="flex items-center gap-1.5">
           <Bell size={12} className="shrink-0" />

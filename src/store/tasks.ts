@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
-import type { Task } from "../lib/types";
+import type { Recurrence, Task } from "../lib/types";
 import { tasksRepo } from "../lib/repo";
 import { now } from "../lib/db";
+import { nextOccurrence } from "../lib/dates";
 import { debounce } from "../lib/util";
 import { notify, reminderAt } from "../lib/notifications";
 
@@ -26,7 +27,10 @@ function writeTitleDebounced(id: string, title: string) {
 
 /** Attributes the composer can set on a task before it's created. */
 export type NewTaskExtras = Partial<
-  Pick<Task, "description" | "due_at" | "due_has_time" | "priority" | "note_id">
+  Pick<
+    Task,
+    "description" | "due_at" | "due_has_time" | "priority" | "note_id" | "recur"
+  >
 >;
 
 interface TasksState {
@@ -36,8 +40,17 @@ interface TasksState {
   add: (title: string, extras?: NewTaskExtras) => Promise<void>;
   toggle: (id: string) => Promise<void>;
   update: (id: string, patch: Partial<Task>) => Promise<void>;
-  /** Set/clear the due date (optionally with a time of day); re-arms the reminder unless it's already in the past. */
-  setDue: (id: string, dueAt: number | null, hasTime?: number) => Promise<void>;
+  /**
+   * Set/clear the due date (optionally with a time of day and a repeat
+   * preset); re-arms the reminder unless it's already in the past. Omitting
+   * recur leaves it untouched; clearing the date always clears the repeat.
+   */
+  setDue: (
+    id: string,
+    dueAt: number | null,
+    hasTime?: number,
+    recur?: Recurrence | null
+  ) => Promise<void>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   clearCompleted: () => Promise<void>;
@@ -75,6 +88,8 @@ export const useTasks = create<TasksState>((set, get) => ({
         due_at !== null && reminderAt(due_at, due_has_time) <= Date.now()
           ? 1
           : 0,
+      // A repeat only makes sense with a due date to roll forward from.
+      recur: due_at !== null ? extras?.recur ?? null : null,
       created_at: now(),
     };
     await tasksRepo.create(task);
@@ -84,6 +99,18 @@ export const useTasks = create<TasksState>((set, get) => ({
   async toggle(id) {
     const task = get().tasks.find((t) => t.id === id);
     if (!task) return;
+    // Completing a repeating task rolls its due date to the next occurrence
+    // instead of marking it done; the reminder re-arms via the reset flag.
+    if (!task.done && task.recur && task.due_at !== null) {
+      const due_at = nextOccurrence(task.due_at, task.recur, task.due_has_time);
+      const notified =
+        reminderAt(due_at, task.due_has_time) <= Date.now() ? 1 : 0;
+      set((s) => ({
+        tasks: s.tasks.map((t) => (t.id === id ? { ...t, due_at, notified } : t)),
+      }));
+      await tasksRepo.update(id, { due_at, notified });
+      return;
+    }
     const done = task.done ? 0 : 1;
     set((s) => ({
       tasks: s.tasks.map((t) => (t.id === id ? { ...t, done } : t)),
@@ -105,12 +132,15 @@ export const useTasks = create<TasksState>((set, get) => ({
     await tasksRepo.update(id, patch);
   },
 
-  async setDue(id, dueAt, hasTime = 0) {
+  async setDue(id, dueAt, hasTime = 0, recur) {
     // If the reminder moment for the chosen day already passed (e.g. picking
     // "Today" in the afternoon), don't fire a pointless notification later.
     const notified =
       dueAt !== null && reminderAt(dueAt, hasTime) <= Date.now() ? 1 : 0;
-    await get().update(id, { due_at: dueAt, due_has_time: hasTime, notified });
+    const patch: Partial<Task> = { due_at: dueAt, due_has_time: hasTime, notified };
+    if (dueAt === null) patch.recur = null;
+    else if (recur !== undefined) patch.recur = recur;
+    await get().update(id, patch);
   },
 
   async remove(id) {

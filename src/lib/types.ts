@@ -10,6 +10,17 @@ export interface Note {
   updated_at: number;
 }
 
+/** Repeat presets a task can follow; completing rolls the due date forward. */
+export type Recurrence = "daily" | "weekdays" | "weekly" | "monthly" | "yearly";
+
+export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  daily: "Daily",
+  weekdays: "Weekdays",
+  weekly: "Weekly",
+  monthly: "Monthly",
+  yearly: "Yearly",
+};
+
 export interface Task {
   id: string;
   title: string;
@@ -24,6 +35,8 @@ export interface Task {
   position: number;
   /** 1 once a due notification has been delivered; reset when due_at changes. */
   notified: number;
+  /** Repeat preset; null means one-off. Requires a due date, cleared with it. */
+  recur: Recurrence | null;
   created_at: number;
 }
 

@@ -1,3 +1,5 @@
+import type { Recurrence } from "./types";
+
 export const DAY = 86_400_000;
 
 export function startOfToday(): number {
@@ -74,6 +76,56 @@ export function dueLabel(ts: number, hasTime: number): string {
       year: "numeric",
     });
   return hasTime ? `${day} · ${formatTime(ts)}` : day;
+}
+
+/**
+ * One recurrence step forward from ts, preserving the wall-clock time.
+ * Month/year steps clamp to the last day of the target month
+ * (Jan 31 → Feb 28/29); weekday steps skip Saturday and Sunday.
+ */
+export function addRecurStep(ts: number, recur: Recurrence): number {
+  const d = new Date(ts);
+  switch (recur) {
+    case "daily":
+      d.setDate(d.getDate() + 1);
+      break;
+    case "weekdays":
+      d.setDate(d.getDate() + 1);
+      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      break;
+    case "weekly":
+      d.setDate(d.getDate() + 7);
+      break;
+    case "monthly":
+    case "yearly": {
+      const day = d.getDate();
+      d.setDate(1);
+      if (recur === "monthly") d.setMonth(d.getMonth() + 1);
+      else d.setFullYear(d.getFullYear() + 1);
+      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, last));
+      break;
+    }
+  }
+  return d.getTime();
+}
+
+/**
+ * Next occurrence after completing a task due at dueAt: step from the
+ * original due date, advancing until strictly in the future — past now for
+ * timed tasks, past today for all-day ones (never lands on today, since
+ * today's instance is the one just completed).
+ */
+export function nextOccurrence(
+  dueAt: number,
+  recur: Recurrence,
+  hasTime: number,
+  nowTs = Date.now()
+): number {
+  const floor = hasTime ? nowTs : dayStart(nowTs);
+  let next = addRecurStep(dueAt, recur);
+  while (next <= floor) next = addRecurStep(next, recur);
+  return next;
 }
 
 /** Full "Friday, July 10 · 2:30 PM" for tooltips. */

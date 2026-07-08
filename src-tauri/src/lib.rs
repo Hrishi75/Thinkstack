@@ -127,6 +127,12 @@ pub fn run() {
             sql: include_str!("../migrations/0007_task_description.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 8,
+            description: "add recur column to tasks",
+            sql: include_str!("../migrations/0008_task_recur.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()

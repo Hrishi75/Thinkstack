@@ -46,6 +46,7 @@ export default function QuickCapture() {
         note_id: null,
         position: -now(),
         notified: 0,
+        recur: null,
         created_at: now(),
       });
     } else {

@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { CalendarDays, Flag } from "lucide-react";
 import { useTasks } from "../../store/tasks";
 import { useUI } from "../../store/ui";
+import type { Recurrence } from "../../lib/types";
 import { cn } from "../../lib/util";
 import { dueLabel, dueTooltip } from "../../lib/dates";
 import { reminderLabel } from "../../lib/notifications";
@@ -29,6 +30,7 @@ export default function NewTaskModal({
   const [description, setDescription] = useState("");
   const [due, setDue] = useState<number | null>(null);
   const [hasTime, setHasTime] = useState(0);
+  const [recur, setRecur] = useState<Recurrence | null>(null);
   const [priority, setPriority] = useState(0);
   const [menu, setMenu] = useState<"due" | "priority" | null>(null);
 
@@ -39,6 +41,7 @@ export default function NewTaskModal({
       setDescription("");
       setDue(null);
       setHasTime(0);
+      setRecur(null);
       setPriority(0);
       setMenu(null);
     }
@@ -53,6 +56,7 @@ export default function NewTaskModal({
       description,
       due_at: due,
       due_has_time: hasTime,
+      recur,
       priority,
     });
     if (due !== null) {
@@ -138,9 +142,11 @@ export default function NewTaskModal({
                   <DueMenu
                     dueAt={due}
                     hasTime={hasTime}
-                    onChange={(dueAt, ht, close) => {
+                    recur={recur}
+                    onChange={(dueAt, ht, r, close) => {
                       setDue(dueAt);
                       setHasTime(ht);
+                      setRecur(r);
                       if (close) setMenu(null);
                     }}
                   />
@@ -186,9 +192,11 @@ export default function NewTaskModal({
               <ScheduleSummary
                 dueAt={due}
                 hasTime={hasTime}
+                recur={recur}
                 onClear={() => {
                   setDue(null);
                   setHasTime(0);
+                  setRecur(null);
                 }}
                 className="mx-4 mt-2.5 border-t border-border/60 pt-2"
               />

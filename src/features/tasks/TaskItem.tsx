@@ -5,6 +5,7 @@ import {
   Check,
   GripVertical,
   Flag,
+  Repeat,
   X,
   CalendarDays,
   Link2,
@@ -12,9 +13,15 @@ import {
 import { useTasks } from "../../store/tasks";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
-import type { Task } from "../../lib/types";
+import { RECURRENCE_LABELS, type Task } from "../../lib/types";
 import { cn } from "../../lib/util";
-import { dayStart, startOfToday, dueLabel, dueTooltip } from "../../lib/dates";
+import {
+  dayStart,
+  startOfToday,
+  dueLabel,
+  dueTooltip,
+  nextOccurrence,
+} from "../../lib/dates";
 import {
   Popover,
   MenuButton,
@@ -31,6 +38,7 @@ export default function TaskItem({ task }: { task: Task }) {
   const notes = useNotes((s) => s.notes);
   const selectNote = useNotes((s) => s.select);
   const setView = useUI((s) => s.setView);
+  const showToast = useUI((s) => s.showToast);
 
   const [menu, setMenu] = useState<"due" | "priority" | "link" | null>(null);
   const [noteQuery, setNoteQuery] = useState("");
@@ -78,6 +86,16 @@ export default function TaskItem({ task }: { task: Task }) {
     setView("notes");
   };
 
+  // Completing a repeating task rolls forward instead of checking off, so
+  // the row never animates — a toast is the only feedback the user gets.
+  const completeTask = () => {
+    if (!task.done && task.recur && task.due_at !== null) {
+      const next = nextOccurrence(task.due_at, task.recur, task.due_has_time);
+      showToast(`Completed — next ${dueLabel(next, task.due_has_time)}`);
+    }
+    toggle(task.id);
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -94,7 +112,7 @@ export default function TaskItem({ task }: { task: Task }) {
       </button>
 
       <button
-        onClick={() => toggle(task.id)}
+        onClick={completeTask}
         className={cn(
           "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border transition-all duration-150",
           task.done
@@ -145,7 +163,10 @@ export default function TaskItem({ task }: { task: Task }) {
           onClick={() => openMenu("due")}
           title={
             task.due_at !== null
-              ? dueTooltip(task.due_at, task.due_has_time)
+              ? dueTooltip(task.due_at, task.due_has_time) +
+                (task.recur
+                  ? ` · Repeats ${RECURRENCE_LABELS[task.recur].toLowerCase()}`
+                  : "")
               : "Due date"
           }
           className={cn(
@@ -161,13 +182,15 @@ export default function TaskItem({ task }: { task: Task }) {
         >
           <CalendarDays size={13} />
           {task.due_at !== null && dueLabel(task.due_at, task.due_has_time)}
+          {task.recur && <Repeat size={11} className="shrink-0" />}
         </button>
         <Popover open={menu === "due"} onClose={closeMenu} className="w-56">
           <DueMenu
             dueAt={task.due_at}
             hasTime={task.due_has_time}
-            onChange={(dueAt, hasTime, close) => {
-              setDue(task.id, dueAt, hasTime);
+            recur={task.recur}
+            onChange={(dueAt, hasTime, recur, close) => {
+              setDue(task.id, dueAt, hasTime, recur);
               if (close) closeMenu();
             }}
           />
