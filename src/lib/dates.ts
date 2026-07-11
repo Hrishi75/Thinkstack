@@ -45,6 +45,18 @@ export function formatTime(ts: number): string {
   });
 }
 
+/** "Jul 9 · 2:30 PM" (with the year when it differs) for created-at stamps. */
+export function dateTimeLabel(ts: number): string {
+  const d = new Date(ts);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  const date = d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" as const }),
+  });
+  return `${date} · ${formatTime(ts)}`;
+}
+
 export function weekdayShort(ts: number): string {
   return new Date(ts).toLocaleDateString(undefined, { weekday: "short" });
 }

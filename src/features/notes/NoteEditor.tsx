@@ -4,10 +4,11 @@ import { BlockNoteView } from "@blocknote/mantine";
 import type { PartialBlock } from "@blocknote/core";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { Trash2 } from "lucide-react";
+import { Trash2, Clock } from "lucide-react";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
-import { blocksToText, debounce } from "../../lib/util";
+import { blocksToText, debounce, relativeTime } from "../../lib/util";
+import { dateTimeLabel } from "../../lib/dates";
 import type { Note } from "../../lib/types";
 import TagBar from "./TagBar";
 import AiPanel from "./AiPanel";
@@ -130,6 +131,14 @@ export default function NoteEditor({ note }: { note: Note }) {
             placeholder="Untitled"
             className="mt-2 w-full bg-transparent text-[40px] font-bold leading-tight tracking-tight outline-none placeholder:text-muted/50"
           />
+
+          {/* Created / edited stamps */}
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-muted/80">
+            <Clock size={11} className="shrink-0" />
+            <span>Created {dateTimeLabel(note.created_at)}</span>
+            <span className="text-muted/50">·</span>
+            <span>Edited {relativeTime(note.updated_at)}</span>
+          </div>
 
           {/* Tags */}
           <TagBar noteId={note.id} />

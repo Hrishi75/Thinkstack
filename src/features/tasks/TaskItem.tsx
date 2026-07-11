@@ -21,6 +21,7 @@ import {
   dueLabel,
   dueTooltip,
   nextOccurrence,
+  dateTimeLabel,
 } from "../../lib/dates";
 import {
   Popover,
@@ -132,17 +133,25 @@ export default function TaskItem({ task }: { task: Task }) {
             !!task.done && "text-muted line-through"
           )}
         />
-        {task.description && (
-          <div
-            className={cn(
-              "truncate text-xs text-muted",
-              !!task.done && "line-through opacity-60"
-            )}
-            title={task.description}
+        <div className="flex items-baseline gap-1.5 text-xs text-muted">
+          {task.description && (
+            <span
+              className={cn(
+                "min-w-0 truncate",
+                !!task.done && "line-through opacity-60"
+              )}
+              title={task.description}
+            >
+              {task.description}
+            </span>
+          )}
+          <span
+            className="shrink-0 whitespace-nowrap text-[10.5px] text-muted/60"
+            title={`Added ${dateTimeLabel(task.created_at)}`}
           >
-            {task.description}
-          </div>
-        )}
+            Added {dateTimeLabel(task.created_at)}
+          </span>
+        </div>
       </div>
 
       {/* linked note chip */}
