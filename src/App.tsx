@@ -5,12 +5,14 @@ import { useUI, type View } from "./store/ui";
 import { useNotes } from "./store/notes";
 import { useTasks } from "./store/tasks";
 import { useSticky } from "./store/sticky";
+import { useCalendar } from "./store/calendar";
 import { useAi } from "./store/ai";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import SettingsModal from "./components/SettingsModal";
 import NotesView from "./features/notes/NotesView";
 import TasksView from "./features/tasks/TasksView";
+import CalendarView from "./features/calendar/CalendarView";
 import StickyView from "./features/sticky/StickyView";
 import TrashView from "./features/trash/TrashView";
 import CommandPalette from "./features/search/CommandPalette";
@@ -18,8 +20,9 @@ import CommandPalette from "./features/search/CommandPalette";
 const VIEW_KEYS: Record<string, View> = {
   "1": "notes",
   "2": "tasks",
-  "3": "sticky",
-  "4": "trash",
+  "3": "calendar",
+  "4": "sticky",
+  "5": "trash",
 };
 
 export default function App() {
@@ -33,6 +36,7 @@ export default function App() {
   const loadTasks = useTasks((s) => s.load);
   const notifyDue = useTasks((s) => s.notifyDue);
   const loadSticky = useSticky((s) => s.load);
+  const loadMarks = useCalendar((s) => s.load);
   const initAi = useAi((s) => s.init);
 
   useEffect(() => {
@@ -40,8 +44,9 @@ export default function App() {
     loadTrash();
     loadTasks();
     loadSticky();
+    loadMarks();
     initAi();
-  }, [loadNotes, loadTrash, loadTasks, loadSticky, initAi]);
+  }, [loadNotes, loadTrash, loadTasks, loadSticky, loadMarks, initAi]);
 
   // Due-task reminders: check shortly after launch (once tasks are loaded),
   // then once a minute while the app is running.
@@ -99,6 +104,7 @@ export default function App() {
         >
           {view === "notes" && <NotesView />}
           {view === "tasks" && <TasksView />}
+          {view === "calendar" && <CalendarView />}
           {view === "sticky" && <StickyView />}
           {view === "trash" && <TrashView />}
         </motion.div>

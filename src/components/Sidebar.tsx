@@ -1,6 +1,7 @@
 import {
   FileText,
   CheckSquare,
+  CalendarDays,
   StickyNote,
   Search,
   Moon,
@@ -20,6 +21,7 @@ import Logo from "./Logo";
 const NAV: { key: View; label: string; icon: typeof FileText }[] = [
   { key: "notes", label: "Notes", icon: FileText },
   { key: "tasks", label: "Tasks", icon: CheckSquare },
+  { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "sticky", label: "Sticky", icon: StickyNote },
 ];
 

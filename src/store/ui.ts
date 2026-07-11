@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type View = "notes" | "tasks" | "sticky" | "trash";
+export type View = "notes" | "tasks" | "calendar" | "sticky" | "trash";
 type Theme = "light" | "dark";
 
 const THEME_KEY = "thinkstack.theme";

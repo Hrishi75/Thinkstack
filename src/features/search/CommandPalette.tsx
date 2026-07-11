@@ -5,6 +5,7 @@ import {
   Search,
   FileText,
   CheckSquare,
+  CalendarDays,
   StickyNote,
   Trash2,
   Plus,
@@ -117,6 +118,7 @@ export default function CommandPalette() {
       },
       goto("notes", "Go to Notes", FileText),
       goto("tasks", "Go to Tasks", CheckSquare),
+      goto("calendar", "Go to Calendar", CalendarDays),
       goto("sticky", "Go to Sticky Notes", StickyNote),
       goto("trash", "Go to Trash", Trash2),
       {

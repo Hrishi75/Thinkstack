@@ -133,6 +133,12 @@ pub fn run() {
             sql: include_str!("../migrations/0008_task_recur.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 9,
+            description: "add day_marks table for the calendar",
+            sql: include_str!("../migrations/0009_day_marks.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()

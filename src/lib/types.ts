@@ -53,6 +53,42 @@ export interface Sticky {
   updated_at: number;
 }
 
+/** Availability status a calendar day can be marked with. */
+export type DayMarkKind = "busy" | "tentative" | "away";
+
+export interface DayMark {
+  /** Local yyyy-mm-dd; one mark per day, unmarked days are free. */
+  day: string;
+  kind: DayMarkKind;
+  /** Optional short note shown on the day (e.g. "dentist"). */
+  note: string;
+  created_at: number;
+}
+
+/** Display name and tailwind classes for each mark kind. */
+export const DAY_MARK_STYLES: Record<
+  DayMarkKind,
+  { label: string; dot: string; pill: string }
+> = {
+  busy: {
+    label: "Busy",
+    dot: "bg-red-500",
+    pill: "bg-red-500/15 text-red-600 dark:text-red-400",
+  },
+  tentative: {
+    label: "Tentative",
+    dot: "bg-amber-500",
+    pill: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
+  away: {
+    label: "Away",
+    dot: "bg-sky-500",
+    pill: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+  },
+};
+
+export const DAY_MARK_KINDS = Object.keys(DAY_MARK_STYLES) as DayMarkKind[];
+
 export interface SearchHit {
   note_id: string;
   title: string;

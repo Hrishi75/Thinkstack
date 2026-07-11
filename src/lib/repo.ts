@@ -1,6 +1,14 @@
 import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
-import type { Note, Task, Sticky, SearchHit, Tag, TagWithCount } from "./types";
+import type {
+  DayMark,
+  Note,
+  Task,
+  Sticky,
+  SearchHit,
+  Tag,
+  TagWithCount,
+} from "./types";
 
 /**
  * Build a `SET` clause from a patch, keeping only allow-listed columns.
@@ -187,6 +195,29 @@ export const tasksRepo = {
   async remove(id: string): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM tasks WHERE id = ?", [id]);
+  },
+};
+
+/* --------------------------- Day marks --------------------------- */
+
+export const dayMarksRepo = {
+  async list(): Promise<DayMark[]> {
+    const db = await getDb();
+    return db.select<DayMark[]>("SELECT * FROM day_marks");
+  },
+
+  async upsert(mark: DayMark): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO day_marks (day, kind, note, created_at) VALUES (?, ?, ?, ?)
+       ON CONFLICT(day) DO UPDATE SET kind = excluded.kind, note = excluded.note`,
+      [mark.day, mark.kind, mark.note, mark.created_at]
+    );
+  },
+
+  async remove(day: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM day_marks WHERE day = ?", [day]);
   },
 };
 
