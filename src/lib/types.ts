@@ -89,6 +89,147 @@ export const DAY_MARK_STYLES: Record<
 
 export const DAY_MARK_KINDS = Object.keys(DAY_MARK_STYLES) as DayMarkKind[];
 
+/** Buckets a memory can be filed under; purely for grouping and filtering. */
+export type MemoryCategory =
+  | "company"
+  | "product"
+  | "people"
+  | "projects"
+  | "style"
+  | "general";
+
+/**
+ * A standing fact the AI should know without being told again — company
+ * background, who's who, house writing style. Enabled memories are prepended
+ * to the system prompt of every AI request.
+ */
+export interface Memory {
+  id: string;
+  /** Short label; doubles as the heading the model sees. */
+  title: string;
+  content: string;
+  category: MemoryCategory;
+  /** 0 keeps the memory but leaves it out of the AI context. */
+  enabled: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export const MEMORY_CATEGORIES: Record<
+  MemoryCategory,
+  { label: string; pill: string }
+> = {
+  company: {
+    label: "Company",
+    pill: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  },
+  product: {
+    label: "Product",
+    pill: "bg-purple-500/15 text-purple-600 dark:text-purple-400",
+  },
+  people: {
+    label: "People",
+    pill: "bg-green-500/15 text-green-600 dark:text-green-400",
+  },
+  projects: {
+    label: "Projects",
+    pill: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
+  style: {
+    label: "Style & tone",
+    pill: "bg-pink-500/15 text-pink-600 dark:text-pink-400",
+  },
+  general: {
+    label: "General",
+    pill: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  },
+};
+
+export const MEMORY_CATEGORY_KEYS = Object.keys(
+  MEMORY_CATEGORIES
+) as MemoryCategory[];
+
+/** Coerce a stored category string to a known one. */
+export function toMemoryCategory(raw: string): MemoryCategory {
+  return (MEMORY_CATEGORY_KEYS as string[]).includes(raw)
+    ? (raw as MemoryCategory)
+    : "general";
+}
+
+/** Lifecycle of an orchestration worker. The process is never resumed across
+ * app restarts, so `running` rows are reconciled to `stopped` on load. */
+export type WorkerStatus =
+  | "running"
+  | "review"
+  | "approved"
+  | "failed"
+  | "stopped";
+
+export interface Worker {
+  id: string;
+  repo_path: string;
+  repo_label: string;
+  source_kind: "issue" | "pr";
+  source_number: number | null;
+  title: string;
+  prompt: string;
+  branch: string;
+  worktree_path: string;
+  /** Commit the worktree branched from; diffs are computed against it. */
+  base_sha: string;
+  status: WorkerStatus;
+  error: string;
+  /** Claude Code session id, for `claude --resume`. */
+  session_id: string;
+  cost_usd: number;
+  pr_url: string;
+  created_at: number;
+  updated_at: number;
+}
+
+export const WORKER_STATUS_STYLES: Record<
+  WorkerStatus,
+  { label: string; dot: string; pill: string }
+> = {
+  running: {
+    label: "Running",
+    dot: "bg-sky-500",
+    pill: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+  },
+  review: {
+    label: "Needs review",
+    dot: "bg-amber-500",
+    pill: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+  },
+  approved: {
+    label: "Approved",
+    dot: "bg-green-500",
+    pill: "bg-green-500/15 text-green-600 dark:text-green-400",
+  },
+  failed: {
+    label: "Failed",
+    dot: "bg-red-500",
+    pill: "bg-red-500/15 text-red-600 dark:text-red-400",
+  },
+  stopped: {
+    label: "Stopped",
+    dot: "bg-slate-400",
+    pill: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  },
+};
+
+/** An open GitHub issue or PR available to hand to a worker. */
+export interface WorkItem {
+  kind: "issue" | "pr";
+  number: number;
+  title: string;
+  labels: string[];
+  updated_at: string;
+  url: string;
+  /** Source branch of a PR; empty for issues. */
+  head_ref: string;
+}
+
 export interface SearchHit {
   note_id: string;
   title: string;
