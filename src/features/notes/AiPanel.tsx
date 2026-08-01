@@ -14,9 +14,11 @@ import {
   SpellCheck,
   PenLine,
   ListChecks,
+  Brain,
 } from "lucide-react";
 import { useAi } from "../../store/ai";
 import { useTasks } from "../../store/tasks";
+import { useMemory } from "../../store/memory";
 import { useUI } from "../../store/ui";
 import type { Note } from "../../lib/types";
 import { cn } from "../../lib/util";
@@ -86,6 +88,9 @@ export default function AiPanel({
   const addTask = useTasks((s) => s.add);
   const showToast = useUI((s) => s.showToast);
   const setView = useUI((s) => s.setView);
+  const activeMemories = useMemory(
+    (s) => s.memories.filter((m) => m.enabled === 1 && m.content.trim()).length
+  );
 
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -278,6 +283,19 @@ export default function AiPanel({
                       <CornerDownLeft size={13} />
                     </button>
                   </div>
+                  {/* Every action above also carries the Memory context. */}
+                  <button
+                    onClick={() => {
+                      close();
+                      setView("memory");
+                    }}
+                    className="mx-1 mt-1 flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-muted transition hover:bg-elevated hover:text-text"
+                  >
+                    <Brain size={12} />
+                    {activeMemories > 0
+                      ? `Using ${activeMemories} memor${activeMemories === 1 ? "y" : "ies"}`
+                      : "Add memory so AI knows your context"}
+                  </button>
                 </div>
               )}
             </motion.div>

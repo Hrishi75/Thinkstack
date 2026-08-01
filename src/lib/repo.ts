@@ -1,13 +1,17 @@
 import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
 import type {
+  BoardKind,
+  BoardPlacement,
   DayMark,
+  Memory,
   Note,
   Task,
   Sticky,
   SearchHit,
   Tag,
   TagWithCount,
+  Worker,
 } from "./types";
 
 /**
@@ -221,6 +225,137 @@ export const dayMarksRepo = {
   },
 };
 
+/* ---------------------------- Memories ---------------------------- */
+
+export const memoriesRepo = {
+  /** Newest first — stable while a card is being edited, unlike updated_at. */
+  async list(): Promise<Memory[]> {
+    const db = await getDb();
+    return db.select<Memory[]>("SELECT * FROM memories ORDER BY created_at DESC");
+  },
+
+  async create(m: Memory): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO memories (id, title, content, category, enabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [m.id, m.title, m.content, m.category, m.enabled, m.created_at, m.updated_at]
+    );
+  },
+
+  async update(
+    id: string,
+    patch: Partial<Pick<Memory, "title" | "content" | "category" | "enabled">>
+  ): Promise<void> {
+    const db = await getDb();
+    const { fields, values } = setClause(patch, [
+      "title",
+      "content",
+      "category",
+      "enabled",
+    ]);
+    if (!fields.length) return;
+    fields.push("updated_at = ?");
+    values.push(now());
+    values.push(id);
+    await db.execute(`UPDATE memories SET ${fields.join(", ")} WHERE id = ?`, values);
+  },
+
+  async remove(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM memories WHERE id = ?", [id]);
+  },
+};
+
+/* ---------------------------- Workers ----------------------------- */
+
+export const workersRepo = {
+  async list(): Promise<Worker[]> {
+    const db = await getDb();
+    return db.select<Worker[]>("SELECT * FROM workers ORDER BY created_at DESC");
+  },
+
+  async create(w: Worker): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO workers (id, repo_path, repo_label, source_kind, source_number, title,
+                            prompt, branch, worktree_path, base_sha, status, error, session_id,
+                            cost_usd, pr_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        w.id,
+        w.repo_path,
+        w.repo_label,
+        w.source_kind,
+        w.source_number,
+        w.title,
+        w.prompt,
+        w.branch,
+        w.worktree_path,
+        w.base_sha,
+        w.status,
+        w.error,
+        w.session_id,
+        w.cost_usd,
+        w.pr_url,
+        w.created_at,
+        w.updated_at,
+      ]
+    );
+  },
+
+  async update(
+    id: string,
+    patch: Partial<
+      Pick<
+        Worker,
+        | "status"
+        | "error"
+        | "session_id"
+        | "cost_usd"
+        | "pr_url"
+        | "worktree_path"
+        | "base_sha"
+        | "title"
+      >
+    >
+  ): Promise<void> {
+    const db = await getDb();
+    const { fields, values } = setClause(patch, [
+      "status",
+      "error",
+      "session_id",
+      "cost_usd",
+      "pr_url",
+      "worktree_path",
+      "base_sha",
+      "title",
+    ]);
+    if (!fields.length) return;
+    fields.push("updated_at = ?");
+    values.push(now());
+    values.push(id);
+    await db.execute(`UPDATE workers SET ${fields.join(", ")} WHERE id = ?`, values);
+  },
+
+  /**
+   * Worker processes die with the app, so anything still marked running at
+   * startup is an orphan from a previous launch.
+   */
+  async reconcileOrphans(): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      "UPDATE workers SET status = 'stopped', updated_at = ? WHERE status = 'running'",
+      [now()]
+    );
+  },
+
+  async remove(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM workers WHERE id = ?", [id]);
+  },
+};
+
 /* ----------------------------- Sticky ----------------------------- */
 
 export const stickyRepo = {
@@ -271,6 +406,56 @@ export const stickyRepo = {
   async remove(id: string): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM sticky_notes WHERE id = ?", [id]);
+  },
+};
+
+/* ------------------------------ Board ------------------------------ */
+
+export const boardRepo = {
+  async list(): Promise<BoardPlacement[]> {
+    const db = await getDb();
+    return db.select<BoardPlacement[]>(
+      "SELECT * FROM board_items ORDER BY position ASC"
+    );
+  },
+
+  /** Save (or move) one card's column and order within it. */
+  async place(p: BoardPlacement): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO board_items (kind, item_id, stage, position, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(kind, item_id) DO UPDATE SET
+         stage = excluded.stage,
+         position = excluded.position,
+         updated_at = excluded.updated_at`,
+      [p.kind, p.item_id, p.stage, p.position, p.updated_at]
+    );
+  },
+
+  async remove(kind: BoardKind, itemId: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM board_items WHERE kind = ? AND item_id = ?", [
+      kind,
+      itemId,
+    ]);
+  },
+
+  /**
+   * Drop placements whose item is gone (deleted task, trashed note, discarded
+   * worker). Nothing renders for them either way; this just stops the table
+   * growing forever. Run once per load.
+   */
+  async prune(): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `DELETE FROM board_items
+       WHERE (kind = 'task'   AND item_id NOT IN (SELECT id FROM tasks))
+          OR (kind = 'note'   AND item_id NOT IN (SELECT id FROM notes WHERE archived = 0))
+          OR (kind = 'sticky' AND item_id NOT IN (SELECT id FROM sticky_notes))
+          OR (kind = 'worker' AND item_id NOT IN (SELECT id FROM workers))
+          OR kind NOT IN ('task', 'note', 'sticky', 'worker')`
+    );
   },
 };
 

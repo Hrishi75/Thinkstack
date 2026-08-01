@@ -37,7 +37,8 @@ interface TasksState {
   tasks: Task[];
   loaded: boolean;
   load: () => Promise<void>;
-  add: (title: string, extras?: NewTaskExtras) => Promise<void>;
+  /** Returns the new task's id, or "" when the title was blank. */
+  add: (title: string, extras?: NewTaskExtras) => Promise<string>;
   toggle: (id: string) => Promise<void>;
   update: (id: string, patch: Partial<Task>) => Promise<void>;
   /**
@@ -68,7 +69,7 @@ export const useTasks = create<TasksState>((set, get) => ({
 
   async add(title, extras) {
     const trimmed = title.trim();
-    if (!trimmed) return;
+    if (!trimmed) return "";
     const minPos = Math.min(0, ...get().tasks.map((t) => t.position));
     const due_at = extras?.due_at ?? null;
     const due_has_time = extras?.due_has_time ?? 0;
@@ -94,6 +95,7 @@ export const useTasks = create<TasksState>((set, get) => ({
     };
     await tasksRepo.create(task);
     set((s) => ({ tasks: [task, ...s.tasks] }));
+    return task.id;
   },
 
   async toggle(id) {

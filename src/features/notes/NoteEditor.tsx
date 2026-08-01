@@ -4,10 +4,10 @@ import { BlockNoteView } from "@blocknote/mantine";
 import type { PartialBlock } from "@blocknote/core";
 import "@blocknote/core/fonts/inter.css";
 import "@blocknote/mantine/style.css";
-import { Trash2, Clock } from "lucide-react";
+import { Trash2, Clock, Copy } from "lucide-react";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
-import { blocksToText, debounce, relativeTime } from "../../lib/util";
+import { blocksToText, countWords, debounce, relativeTime } from "../../lib/util";
 import { dateTimeLabel } from "../../lib/dates";
 import type { Note } from "../../lib/types";
 import TagBar from "./TagBar";
@@ -51,6 +51,18 @@ export default function NoteEditor({ note }: { note: Note }) {
   const initialContent = useMemo(() => parseContent(note.content_json), [note.id]);
   const editor = useCreateBlockNote({ initialContent });
 
+  const [words, setWords] = useState(() => countWords(note.body_text));
+
+  const copyMarkdown = async () => {
+    try {
+      const md = await editor.blocksToMarkdownLossy(editor.document);
+      await navigator.clipboard.writeText(md);
+      showToast("Copied note as Markdown");
+    } catch {
+      showToast("Couldn't copy — clipboard unavailable");
+    }
+  };
+
   const saveBody = useRef(
     debounce((id: string) => {
       const doc = editor.document;
@@ -87,6 +99,13 @@ export default function NoteEditor({ note }: { note: Note }) {
     <div className="flex h-full flex-col">
       <header className="drag-region flex h-10 items-center justify-end gap-1 px-4">
         <AiPanel note={note} editor={editor} />
+        <button
+          onClick={copyMarkdown}
+          className="no-drag rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-text"
+          title="Copy as Markdown"
+        >
+          <Copy size={16} />
+        </button>
         <button
           onClick={moveToTrash}
           className="no-drag rounded-md p-1.5 text-muted transition hover:bg-elevated hover:text-red-500"
@@ -138,6 +157,8 @@ export default function NoteEditor({ note }: { note: Note }) {
             <span>Created {dateTimeLabel(note.created_at)}</span>
             <span className="text-muted/50">·</span>
             <span>Edited {relativeTime(note.updated_at)}</span>
+            <span className="text-muted/50">·</span>
+            <span>{words === 1 ? "1 word" : `${words} words`}</span>
           </div>
 
           {/* Tags */}
@@ -148,7 +169,10 @@ export default function NoteEditor({ note }: { note: Note }) {
             <BlockNoteView
               editor={editor}
               theme={theme}
-              onChange={() => saveBody(note.id)}
+              onChange={() => {
+                saveBody(note.id);
+                setWords(countWords(blocksToText(editor.document)));
+              }}
             />
           </div>
         </div>

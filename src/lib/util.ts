@@ -62,6 +62,12 @@ export function relativeTime(ts: number): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+/** Count words in a plain-text string; empty/whitespace-only counts as 0. */
+export function countWords(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
 /** First non-empty line of plain text → note title. */
 export function deriveTitle(text: string): string {
   const firstLine = text.split("\n").map((l) => l.trim()).find(Boolean);

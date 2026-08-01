@@ -1,8 +1,11 @@
 import {
+  LayoutGrid,
   FileText,
   CheckSquare,
   CalendarDays,
   StickyNote,
+  Brain,
+  Boxes,
   Search,
   Moon,
   Sun,
@@ -14,15 +17,20 @@ import { useUI, type View } from "../store/ui";
 import { useNotes } from "../store/notes";
 import { useTasks } from "../store/tasks";
 import { useSticky } from "../store/sticky";
+import { useMemory } from "../store/memory";
+import { useOrchestrator } from "../store/orchestrator";
 import { useAi } from "../store/ai";
 import { cn } from "../lib/util";
 import Logo from "./Logo";
 
 const NAV: { key: View; label: string; icon: typeof FileText }[] = [
+  { key: "board", label: "Board", icon: LayoutGrid },
   { key: "notes", label: "Notes", icon: FileText },
   { key: "tasks", label: "Tasks", icon: CheckSquare },
   { key: "calendar", label: "Calendar", icon: CalendarDays },
   { key: "sticky", label: "Sticky", icon: StickyNote },
+  { key: "memory", label: "Memory", icon: Brain },
+  { key: "orchestration", label: "Orchestration", icon: Boxes },
 ];
 
 function NavButton({
@@ -69,11 +77,17 @@ export default function Sidebar() {
   const createNote = useNotes((s) => s.create);
   const taskCount = useTasks((s) => s.tasks.filter((t) => !t.done).length);
   const stickyCount = useSticky((s) => s.stickies.length);
+  const memoryCount = useMemory((s) => s.memories.filter((m) => m.enabled === 1).length);
+  const activeWorkers = useOrchestrator(
+    (s) => s.workers.filter((w) => w.status === "running" || w.status === "review").length
+  );
 
   const counts: Record<string, number> = {
     notes: noteCount,
     tasks: taskCount,
     sticky: stickyCount,
+    memory: memoryCount,
+    orchestration: activeWorkers,
   };
 
   const newNote = async () => {

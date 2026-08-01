@@ -2,6 +2,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod ai;
+mod orchestrator;
 
 /// Sticky ids are client-generated nanoids; reject anything else before the
 /// id is embedded in a window label and webview URL.
@@ -139,6 +140,24 @@ pub fn run() {
             sql: include_str!("../migrations/0009_day_marks.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 10,
+            description: "add memories table for persistent AI context",
+            sql: include_str!("../migrations/0010_memories.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 11,
+            description: "add workers table for orchestration sessions",
+            sql: include_str!("../migrations/0011_workers.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 12,
+            description: "add board_items table for the unified board",
+            sql: include_str!("../migrations/0012_board.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()
@@ -171,6 +190,7 @@ pub fn run() {
     }
 
     builder
+        .manage(orchestrator::Orchestrator::default())
         .setup(|app| {
             #[cfg(desktop)]
             {
@@ -189,7 +209,15 @@ pub fn run() {
             ai::ai_set_key,
             ai::ai_has_key,
             ai::ai_clear_key,
-            ai::ai_complete
+            ai::ai_complete,
+            orchestrator::orch_check_env,
+            orchestrator::orch_repo_label,
+            orchestrator::orch_list_work,
+            orchestrator::orch_spawn,
+            orchestrator::orch_stop,
+            orchestrator::orch_diff,
+            orchestrator::orch_approve,
+            orchestrator::orch_discard
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

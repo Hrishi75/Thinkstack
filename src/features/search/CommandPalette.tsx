@@ -3,10 +3,13 @@ import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Search,
+  LayoutGrid,
   FileText,
   CheckSquare,
   CalendarDays,
   StickyNote,
+  Brain,
+  Boxes,
   Trash2,
   Plus,
   Moon,
@@ -17,6 +20,7 @@ import {
 import { useUI, type View } from "../../store/ui";
 import { useNotes } from "../../store/notes";
 import { useSticky } from "../../store/sticky";
+import { useMemory } from "../../store/memory";
 import { searchNotes } from "../../lib/repo";
 import type { SearchHit } from "../../lib/types";
 import { cn, relativeTime } from "../../lib/util";
@@ -81,6 +85,7 @@ export default function CommandPalette() {
   const select = useNotes((s) => s.select);
   const createNote = useNotes((s) => s.create);
   const createSticky = useSticky((s) => s.create);
+  const createMemory = useMemory((s) => s.add);
 
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<SearchHit[]>([]);
@@ -116,10 +121,22 @@ export default function CommandPalette() {
           await invoke("open_sticky", { id: s.id });
         },
       },
+      {
+        id: "new-memory",
+        label: "New memory",
+        icon: Brain,
+        run: async () => {
+          await createMemory();
+          setView("memory");
+        },
+      },
+      goto("board", "Go to Board", LayoutGrid),
       goto("notes", "Go to Notes", FileText),
       goto("tasks", "Go to Tasks", CheckSquare),
       goto("calendar", "Go to Calendar", CalendarDays),
       goto("sticky", "Go to Sticky Notes", StickyNote),
+      goto("memory", "Go to Memory", Brain),
+      goto("orchestration", "Go to Orchestration", Boxes),
       goto("trash", "Go to Trash", Trash2),
       {
         id: "toggle-theme",
@@ -128,7 +145,7 @@ export default function CommandPalette() {
         run: toggleTheme,
       },
     ];
-  }, [setView, createNote, createSticky, theme, toggleTheme]);
+  }, [setView, createNote, createSticky, createMemory, theme, toggleTheme]);
 
   const hasQuery = query.trim().length > 0;
 

@@ -6,23 +6,32 @@ import { useNotes } from "./store/notes";
 import { useTasks } from "./store/tasks";
 import { useSticky } from "./store/sticky";
 import { useCalendar } from "./store/calendar";
+import { useMemory } from "./store/memory";
+import { useOrchestrator } from "./store/orchestrator";
 import { useAi } from "./store/ai";
+import { useBoard } from "./store/board";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import SettingsModal from "./components/SettingsModal";
+import BoardView from "./features/board/BoardView";
 import NotesView from "./features/notes/NotesView";
 import TasksView from "./features/tasks/TasksView";
 import CalendarView from "./features/calendar/CalendarView";
 import StickyView from "./features/sticky/StickyView";
+import MemoryView from "./features/memory/MemoryView";
+import OrchestrationView from "./features/orchestration/OrchestrationView";
 import TrashView from "./features/trash/TrashView";
 import CommandPalette from "./features/search/CommandPalette";
 
 const VIEW_KEYS: Record<string, View> = {
+  "0": "board",
   "1": "notes",
   "2": "tasks",
   "3": "calendar",
   "4": "sticky",
-  "5": "trash",
+  "5": "memory",
+  "6": "orchestration",
+  "7": "trash",
 };
 
 export default function App() {
@@ -37,6 +46,11 @@ export default function App() {
   const notifyDue = useTasks((s) => s.notifyDue);
   const loadSticky = useSticky((s) => s.load);
   const loadMarks = useCalendar((s) => s.load);
+  const loadMemories = useMemory((s) => s.load);
+  const loadWorkers = useOrchestrator((s) => s.load);
+  const checkOrchEnv = useOrchestrator((s) => s.checkEnv);
+  const subscribeWorkers = useOrchestrator((s) => s.subscribe);
+  const loadBoard = useBoard((s) => s.load);
   const initAi = useAi((s) => s.init);
 
   useEffect(() => {
@@ -45,8 +59,31 @@ export default function App() {
     loadTasks();
     loadSticky();
     loadMarks();
+    loadMemories();
+    loadWorkers();
+    checkOrchEnv();
+    loadBoard();
     initAi();
-  }, [loadNotes, loadTrash, loadTasks, loadSticky, loadMarks, initAi]);
+  }, [
+    loadNotes,
+    loadTrash,
+    loadTasks,
+    loadSticky,
+    loadMarks,
+    loadMemories,
+    loadWorkers,
+    checkOrchEnv,
+    loadBoard,
+    initAi,
+  ]);
+
+  // Worker log/status events stream in from Rust while sessions run.
+  useEffect(() => {
+    const off = subscribeWorkers();
+    return () => {
+      off.then((fn) => fn());
+    };
+  }, [subscribeWorkers]);
 
   // Due-task reminders: check shortly after launch (once tasks are loaded),
   // then once a minute while the app is running.
@@ -102,10 +139,13 @@ export default function App() {
           transition={{ duration: 0.14, ease: "easeOut" }}
           className="h-full"
         >
+          {view === "board" && <BoardView />}
           {view === "notes" && <NotesView />}
           {view === "tasks" && <TasksView />}
           {view === "calendar" && <CalendarView />}
           {view === "sticky" && <StickyView />}
+          {view === "memory" && <MemoryView />}
+          {view === "orchestration" && <OrchestrationView />}
           {view === "trash" && <TrashView />}
         </motion.div>
       </main>

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { buildMemoryContext, useMemory } from "./memory";
 
 export type AiProvider = "anthropic" | "openai" | "groq";
 
@@ -94,10 +95,14 @@ export const useAi = create<AiState>((set, get) => ({
 
   async complete(prompt) {
     const { provider, model } = get();
+    // Standing context from the Memory view rides along on every request, so
+    // the user never has to restate who they are or how they want things done.
+    await useMemory.getState().ensureLoaded();
+    const memory = buildMemoryContext(useMemory.getState().memories);
     return invoke<string>("ai_complete", {
       provider,
       model: model.trim() || DEFAULT_MODELS[provider],
-      system: SYSTEM_PROMPT,
+      system: memory ? `${SYSTEM_PROMPT}\n\n${memory}` : SYSTEM_PROMPT,
       prompt,
     });
   },
