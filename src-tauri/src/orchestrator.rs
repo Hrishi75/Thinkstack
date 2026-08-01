@@ -126,10 +126,7 @@ fn validate_repo(path: &str) -> Result<PathBuf, String> {
         .canonicalize()
         .map_err(|_| format!("no such folder: {path}"))?;
     if !canonical.join(".git").exists() {
-        return Err(format!(
-            "{} is not a git repository",
-            canonical.display()
-        ));
+        return Err(format!("{} is not a git repository", canonical.display()));
     }
     Ok(canonical)
 }
@@ -177,9 +174,8 @@ impl Orchestrator {
             }
         }
 
-        let path = found.ok_or_else(|| {
-            format!("`{name}` isn't installed, or isn't on this app's PATH.")
-        })?;
+        let path = found
+            .ok_or_else(|| format!("`{name}` isn't installed, or isn't on this app's PATH."))?;
         self.bins.lock().await.insert(name.into(), path.clone());
         Ok(path)
     }
@@ -355,7 +351,14 @@ pub async fn orch_repo_label(
     let gh = state.bin("gh").await?;
     let out = run(
         &gh,
-        &["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"],
+        &[
+            "repo",
+            "view",
+            "--json",
+            "nameWithOwner",
+            "-q",
+            ".nameWithOwner",
+        ],
         Some(&repo),
     )
     .await?;
@@ -425,6 +428,9 @@ pub struct SpawnResult {
 ///
 /// Returns as soon as the process is running; progress arrives as `orch://log`
 /// events and a final `orch://status`.
+// A command's arity is its JS payload: grouping these into a struct would only
+// move the same fields behind another level of nesting on both sides.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn orch_spawn(
     app: AppHandle,
@@ -562,9 +568,7 @@ pub async fn orch_spawn(
                         }
                     }
                     // Non-JSON output still belongs in the log.
-                    Err(_) if !line.trim().is_empty() => {
-                        log(&app, &id, truncate(&line, 400))
-                    }
+                    Err(_) if !line.trim().is_empty() => log(&app, &id, truncate(&line, 400)),
                     Err(_) => {}
                 }
             }
