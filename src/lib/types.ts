@@ -230,6 +230,53 @@ export interface WorkItem {
   head_ref: string;
 }
 
+/* ------------------------------ Board ------------------------------ */
+
+/** Columns of the unified board, in display order. */
+export type BoardStage = "backlog" | "todo" | "doing" | "done";
+
+/** Domains that contribute cards to the board. */
+export type BoardKind = "task" | "note" | "sticky" | "worker";
+
+export const BOARD_STAGES: {
+  key: BoardStage;
+  label: string;
+  dot: string;
+}[] = [
+  { key: "backlog", label: "Backlog", dot: "bg-slate-400" },
+  { key: "todo", label: "To do", dot: "bg-sky-500" },
+  { key: "doing", label: "In progress", dot: "bg-amber-500" },
+  { key: "done", label: "Done", dot: "bg-green-500" },
+];
+
+export const BOARD_STAGE_KEYS = BOARD_STAGES.map((s) => s.key);
+
+export const BOARD_KINDS: { key: BoardKind; label: string }[] = [
+  { key: "task", label: "Tasks" },
+  { key: "note", label: "Notes" },
+  { key: "sticky", label: "Sticky" },
+  { key: "worker", label: "Workers" },
+];
+
+/** Coerce a stored stage string to a known one. */
+export function toBoardStage(raw: string): BoardStage {
+  return (BOARD_STAGE_KEYS as string[]).includes(raw)
+    ? (raw as BoardStage)
+    : "backlog";
+}
+
+/**
+ * Where the user dragged one item. Rows exist only for items that have been
+ * placed by hand; everything else takes a stage derived from its own state.
+ */
+export interface BoardPlacement {
+  kind: BoardKind;
+  item_id: string;
+  stage: BoardStage;
+  position: number;
+  updated_at: number;
+}
+
 export interface SearchHit {
   note_id: string;
   title: string;

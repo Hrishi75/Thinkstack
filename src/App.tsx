@@ -9,9 +9,11 @@ import { useCalendar } from "./store/calendar";
 import { useMemory } from "./store/memory";
 import { useOrchestrator } from "./store/orchestrator";
 import { useAi } from "./store/ai";
+import { useBoard } from "./store/board";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import SettingsModal from "./components/SettingsModal";
+import BoardView from "./features/board/BoardView";
 import NotesView from "./features/notes/NotesView";
 import TasksView from "./features/tasks/TasksView";
 import CalendarView from "./features/calendar/CalendarView";
@@ -22,6 +24,7 @@ import TrashView from "./features/trash/TrashView";
 import CommandPalette from "./features/search/CommandPalette";
 
 const VIEW_KEYS: Record<string, View> = {
+  "0": "board",
   "1": "notes",
   "2": "tasks",
   "3": "calendar",
@@ -47,6 +50,7 @@ export default function App() {
   const loadWorkers = useOrchestrator((s) => s.load);
   const checkOrchEnv = useOrchestrator((s) => s.checkEnv);
   const subscribeWorkers = useOrchestrator((s) => s.subscribe);
+  const loadBoard = useBoard((s) => s.load);
   const initAi = useAi((s) => s.init);
 
   useEffect(() => {
@@ -58,6 +62,7 @@ export default function App() {
     loadMemories();
     loadWorkers();
     checkOrchEnv();
+    loadBoard();
     initAi();
   }, [
     loadNotes,
@@ -68,6 +73,7 @@ export default function App() {
     loadMemories,
     loadWorkers,
     checkOrchEnv,
+    loadBoard,
     initAi,
   ]);
 
@@ -133,6 +139,7 @@ export default function App() {
           transition={{ duration: 0.14, ease: "easeOut" }}
           className="h-full"
         >
+          {view === "board" && <BoardView />}
           {view === "notes" && <NotesView />}
           {view === "tasks" && <TasksView />}
           {view === "calendar" && <CalendarView />}

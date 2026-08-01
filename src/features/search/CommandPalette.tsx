@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   Search,
+  LayoutGrid,
   FileText,
   CheckSquare,
   CalendarDays,
@@ -129,6 +130,7 @@ export default function CommandPalette() {
           setView("memory");
         },
       },
+      goto("board", "Go to Board", LayoutGrid),
       goto("notes", "Go to Notes", FileText),
       goto("tasks", "Go to Tasks", CheckSquare),
       goto("calendar", "Go to Calendar", CalendarDays),

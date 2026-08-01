@@ -1,4 +1,5 @@
 import {
+  LayoutGrid,
   FileText,
   CheckSquare,
   CalendarDays,
@@ -23,6 +24,7 @@ import { cn } from "../lib/util";
 import Logo from "./Logo";
 
 const NAV: { key: View; label: string; icon: typeof FileText }[] = [
+  { key: "board", label: "Board", icon: LayoutGrid },
   { key: "notes", label: "Notes", icon: FileText },
   { key: "tasks", label: "Tasks", icon: CheckSquare },
   { key: "calendar", label: "Calendar", icon: CalendarDays },

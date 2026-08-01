@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 export type View =
+  | "board"
   | "notes"
   | "tasks"
   | "calendar"

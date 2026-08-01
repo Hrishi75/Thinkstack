@@ -1,6 +1,8 @@
 import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
 import type {
+  BoardKind,
+  BoardPlacement,
   DayMark,
   Memory,
   Note,
@@ -404,6 +406,56 @@ export const stickyRepo = {
   async remove(id: string): Promise<void> {
     const db = await getDb();
     await db.execute("DELETE FROM sticky_notes WHERE id = ?", [id]);
+  },
+};
+
+/* ------------------------------ Board ------------------------------ */
+
+export const boardRepo = {
+  async list(): Promise<BoardPlacement[]> {
+    const db = await getDb();
+    return db.select<BoardPlacement[]>(
+      "SELECT * FROM board_items ORDER BY position ASC"
+    );
+  },
+
+  /** Save (or move) one card's column and order within it. */
+  async place(p: BoardPlacement): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO board_items (kind, item_id, stage, position, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(kind, item_id) DO UPDATE SET
+         stage = excluded.stage,
+         position = excluded.position,
+         updated_at = excluded.updated_at`,
+      [p.kind, p.item_id, p.stage, p.position, p.updated_at]
+    );
+  },
+
+  async remove(kind: BoardKind, itemId: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM board_items WHERE kind = ? AND item_id = ?", [
+      kind,
+      itemId,
+    ]);
+  },
+
+  /**
+   * Drop placements whose item is gone (deleted task, trashed note, discarded
+   * worker). Nothing renders for them either way; this just stops the table
+   * growing forever. Run once per load.
+   */
+  async prune(): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `DELETE FROM board_items
+       WHERE (kind = 'task'   AND item_id NOT IN (SELECT id FROM tasks))
+          OR (kind = 'note'   AND item_id NOT IN (SELECT id FROM notes WHERE archived = 0))
+          OR (kind = 'sticky' AND item_id NOT IN (SELECT id FROM sticky_notes))
+          OR (kind = 'worker' AND item_id NOT IN (SELECT id FROM workers))
+          OR kind NOT IN ('task', 'note', 'sticky', 'worker')`
+    );
   },
 };
 

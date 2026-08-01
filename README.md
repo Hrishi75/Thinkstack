@@ -14,6 +14,11 @@ Your data never leaves your machine — everything lives in a local SQLite datab
 
 ## ✨ Features
 
+### 🗂️ Board
+One kanban board for **everything in the app**. Tasks, notes, sticky notes, and orchestration workers all appear as cards across four columns — **Backlog / To do / In progress / Done** — and you drag any of them anywhere. Each card keeps its own identity: a task card has its checkbox, due date and priority, a sticky shows its color, a worker shows whether it's still running. Clicking a card opens the real thing — the note, the sticky window, the Orchestration view.
+
+Cards you've never touched start in a sensible column (a task with a due date lands in **To do**, a running worker in **In progress**) and stay there until you move them; once dragged, your arrangement is saved. **Done stays in sync with the task checkbox both ways** — completing a task anywhere moves its card, and dropping a card into Done ticks it off. Filter the board by card type, or add a task straight into any column.
+
 ### 📝 Notes
 A block-based rich-text editor (BlockNote) for long-form thinking. Each note has a custom emoji icon, can be **pinned** to the top of the list, and **archived** when you're done with it. Pinned notes always sort first, followed by most recently edited.
 
@@ -38,7 +43,7 @@ Autonomy stops at your machine: `git push` and `gh pr create` are **absent from 
 Lightweight sticky notes in six colors. Pop any sticky out into its own **frameless, always-on-top floating window** that stays visible over other apps — perfect for reminders and scratch thoughts. Position and size are remembered.
 
 ### 🔍 Search & Command Palette
-A `⌘K` command palette with **instant full-text search** across every note, powered by SQLite FTS5 with highlighted snippets, plus **quick actions** — create a note, sticky, or memory, jump between views, or switch the theme without touching the mouse.
+A `⌘K` command palette with **instant full-text search** across every note, powered by SQLite FTS5 with highlighted snippets, plus **quick actions** — create a note, sticky, or memory, jump between views (including the Board), or switch the theme without touching the mouse.
 
 ### 🗑️ Trash
 Deleted notes move to a **Trash** in the sidebar instead of vanishing. Restore them with one click (or the **Undo** toast right after deleting), delete individual notes forever, or empty the whole trash.
@@ -69,6 +74,7 @@ Orchestration tells you which of these are missing rather than failing silently.
 |----------|--------|
 | `⌘K` / `Ctrl+K` | Open the command palette / search |
 | `⌘N` / `Ctrl+N` | Create a new note |
+| `⌘0` | Switch to the Board |
 | `⌘1` … `⌘7` | Switch view (Notes / Tasks / Calendar / Sticky / Memory / Orchestration / Trash) |
 | `⌘⇧Space` | Toggle quick capture (works globally) |
 

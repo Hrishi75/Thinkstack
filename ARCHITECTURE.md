@@ -41,7 +41,9 @@ repository. This keeps queries in one place and views easy to reason about.
 Each domain has its own Zustand store (`notes`, `tasks`, `sticky`, `memory`,
 `orchestrator`), plus a `ui` store for cross-cutting state: the active view, theme, command-palette
 visibility, and the transient toast (used for undo after deleting a note). Stores load data on startup and re-fetch when the underlying data
-changes (see *Multi-Window* below).
+changes (see *Multi-Window* below). The `board` store is the one exception to
+the one-store-per-domain rule: it holds only board placements and derives its
+cards by reading the domain stores (see *The Board*).
 
 ## Multi-Window Model
 
@@ -83,6 +85,7 @@ not shared in-memory state.
 | `memories` | Standing AI context: titled entries with a `category` and an `enabled` flag |
 | `workers` | Orchestration sessions: source issue/PR, branch, worktree path, `base_sha`, status |
 | `sticky_notes` | Sticky content, color, geometry (x/y/width/height) |
+| `board_items` | Where the user dragged one item on the unified board: `(kind, item_id)` → `stage` + `position` |
 | `notes_fts` | FTS5 virtual table mirroring note text for search |
 
 ### Full-Text Search
@@ -93,6 +96,29 @@ sync with `notes` via `AFTER INSERT/UPDATE/DELETE` triggers. The
 (`"term"* AND …`) and returns ranked results with highlighted `snippet()`
 fragments. Results join back to `notes` so trashed (archived) notes never
 surface in search.
+
+### The Board
+
+The Board is the one view that spans domains: tasks, notes, stickies, and
+workers become cards in four columns. It owns no entities of its own — it's a
+projection, assembled by `useBoardCards()` in
+[`src/store/board.ts`](src/store/board.ts) from the four domain stores plus the
+`board_items` placements.
+
+- **Resolving a column** — an item with a placement sits where the user put it.
+  Everything else falls back to a stage derived from its own state (a task with
+  a due date → *To do*, a running worker → *In progress*), so the board is
+  useful before anyone has dragged anything.
+- **Done is the task checkbox** — for tasks, `done` outranks any placement in
+  both directions: completing a task anywhere moves its card, and dropping a
+  card into *Done* writes `done = 1`. This keeps the board and the task list
+  from disagreeing.
+- **Ordering** — placed cards sort first by `position`, then unplaced ones by
+  recency. A drop renumbers the whole target column (`0…n-1`) rather than
+  interpolating, mirroring `useTasks.reorder()`.
+- **Stale rows** — deleting a task or trashing a note leaves its placement
+  behind; nothing renders for it, and `boardRepo.prune()` clears the orphans on
+  every load.
 
 ### AI Memory Context
 

@@ -152,6 +152,12 @@ pub fn run() {
             sql: include_str!("../migrations/0011_workers.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 12,
+            description: "add board_items table for the unified board",
+            sql: include_str!("../migrations/0012_board.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     let mut builder = tauri::Builder::default()
