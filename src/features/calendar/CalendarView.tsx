@@ -210,8 +210,8 @@ export default function CalendarView() {
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col overflow-hidden px-6 pb-6">
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-baseline gap-3">
-            <h2 className="text-xl font-semibold">{monthLabel}</h2>
-            <span className="hidden text-sm text-muted sm:inline">
+            <h2 className="text-lg font-semibold tracking-tight">{monthLabel}</h2>
+            <span className="hidden text-[13px] text-muted sm:inline">
               Click a day to mark it
             </span>
           </div>

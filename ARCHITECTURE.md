@@ -86,6 +86,7 @@ not shared in-memory state.
 | `workers` | Orchestration sessions: source issue/PR, branch, worktree path, `base_sha`, status |
 | `sticky_notes` | Sticky content, color, geometry (x/y/width/height) |
 | `board_items` | Where the user dragged one item on the unified board: `(kind, item_id)` → `stage` + `position` |
+| `notifications` | In-app feed entries: `kind`, a UNIQUE `event_key` for dedupe, `read` flag, and the item to open (`link_kind`, `link_id`) |
 | `notes_fts` | FTS5 virtual table mirroring note text for search |
 
 ### Full-Text Search
@@ -119,6 +120,49 @@ projection, assembled by `useBoardCards()` in
 - **Stale rows** — deleting a task or trashing a note leaves its placement
   behind; nothing renders for it, and `boardRepo.prune()` clears the orphans on
   every load.
+
+### Notifications
+
+`announce()` in [`src/store/notifications.ts`](src/store/notifications.ts) is
+the single way the app tells the user that something happened. Every call
+records a feed entry; the other two channels are layered on top of it, never
+instead of it:
+
+| Channel | When | Where |
+|---------|------|-------|
+| Feed entry | always | the bell in the sidebar header |
+| Toast | the user is present and just acted | `showToast`, bottom-center |
+| Desktop banner | the user may be in another app | `tauri-plugin-notification` |
+
+That inversion is the point: a producer can't accidentally ship a message that
+never reaches the notification center, because the center *is* the code path.
+Immediate feedback on an action that changed no state ("Copied to clipboard")
+is not an event and keeps calling `showToast` directly — a permanent record of
+it would only bury the entries that matter.
+
+Producers pass `{ kind, title, body, link, toast, desktop }` plus an optional
+`eventKey`. The key is the idempotency handle: anything that observes the same
+state repeatedly — the once-a-minute due sweep, the `orch://status` stream —
+passes a stable one and pushes on every observation, and the UNIQUE index
+drops the repeats. One-off user actions omit it and get a unique key, since
+they're a distinct event every time.
+
+Guardrails, because these rows are written from event handlers and kept
+indefinitely:
+
+- **Shape is forced at the repository**, not trusted from the caller: `kind`
+  and `link_kind` are coerced to known values, text is clamped (a worker's
+  stderr has no natural bound), and an entry with no title is dropped.
+- **`announce()` never throws.** A notification failing is not worth breaking
+  a caller that already did its real work.
+- **Mutations roll back.** `markRead`/`remove`/`clear` paint first; if the
+  write fails the previous list is restored, so the badge can't drift from the
+  table.
+- **`prune()` caps the feed at 200** — on load *and* on the write that
+  overflows, so a long session with a busy orchestrator can't grow it — and
+  blanks links whose target is gone, since a deleted task would otherwise open
+  to nothing.
+- **Clearing is a two-step `ConfirmButton`**; there's no undo for it.
 
 ### AI Memory Context
 

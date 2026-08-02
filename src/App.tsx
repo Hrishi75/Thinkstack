@@ -10,6 +10,7 @@ import { useMemory } from "./store/memory";
 import { useOrchestrator } from "./store/orchestrator";
 import { useAi } from "./store/ai";
 import { useBoard } from "./store/board";
+import { useNotifications } from "./store/notifications";
 import Sidebar from "./components/Sidebar";
 import Toast from "./components/Toast";
 import SettingsModal from "./components/SettingsModal";
@@ -23,15 +24,16 @@ import OrchestrationView from "./features/orchestration/OrchestrationView";
 import TrashView from "./features/trash/TrashView";
 import CommandPalette from "./features/search/CommandPalette";
 
+// ⌘1–⌘8 mirror the sidebar order top to bottom.
 const VIEW_KEYS: Record<string, View> = {
-  "0": "board",
-  "1": "notes",
-  "2": "tasks",
-  "3": "calendar",
-  "4": "sticky",
-  "5": "memory",
-  "6": "orchestration",
-  "7": "trash",
+  "1": "board",
+  "2": "notes",
+  "3": "tasks",
+  "4": "calendar",
+  "5": "sticky",
+  "6": "memory",
+  "7": "orchestration",
+  "8": "trash",
 };
 
 export default function App() {
@@ -51,6 +53,7 @@ export default function App() {
   const checkOrchEnv = useOrchestrator((s) => s.checkEnv);
   const subscribeWorkers = useOrchestrator((s) => s.subscribe);
   const loadBoard = useBoard((s) => s.load);
+  const loadNotifications = useNotifications((s) => s.load);
   const initAi = useAi((s) => s.init);
 
   useEffect(() => {
@@ -63,6 +66,7 @@ export default function App() {
     loadWorkers();
     checkOrchEnv();
     loadBoard();
+    loadNotifications();
     initAi();
   }, [
     loadNotes,
@@ -74,6 +78,7 @@ export default function App() {
     loadWorkers,
     checkOrchEnv,
     loadBoard,
+    loadNotifications,
     initAi,
   ]);
 

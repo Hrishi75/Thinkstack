@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
 import { getDb, now } from "./db";
 import type {
+  AppNotification,
   BoardKind,
   BoardPlacement,
   DayMark,
@@ -13,6 +14,7 @@ import type {
   TagWithCount,
   Worker,
 } from "./types";
+import { toLinkKind, toNotificationKind } from "./types";
 
 /**
  * Build a `SET` clause from a patch, keeping only allow-listed columns.
@@ -455,6 +457,122 @@ export const boardRepo = {
           OR (kind = 'sticky' AND item_id NOT IN (SELECT id FROM sticky_notes))
           OR (kind = 'worker' AND item_id NOT IN (SELECT id FROM workers))
           OR kind NOT IN ('task', 'note', 'sticky', 'worker')`
+    );
+  },
+};
+
+/* -------------------------- Notifications -------------------------- */
+
+/** Newest entries kept; the rest are dropped once the cap is passed. */
+export const NOTIFICATION_CAP = 200;
+
+/**
+ * Length limits for stored text. Bodies carry things like a worker's stderr,
+ * which has no natural bound — and these rows are kept indefinitely, so an
+ * unclamped write is a slow leak into the database file.
+ */
+const NOTIFICATION_LIMITS = { event_key: 200, title: 200, body: 2000 } as const;
+
+function clamp(value: string, max: number): string {
+  const text = value.trim();
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+}
+
+export const notificationsRepo = {
+  async list(): Promise<AppNotification[]> {
+    const db = await getDb();
+    return db.select<AppNotification[]>(
+      "SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?",
+      [NOTIFICATION_CAP]
+    );
+  },
+
+  /**
+   * Record one notification, after forcing it into shape: kinds are coerced to
+   * known values and text is clamped, so a caller passing a stray status
+   * string or a megabyte of worker output can't put junk in the table.
+   *
+   * Returns false when nothing was written — either the entry was unusable
+   * (no title) or its event was already recorded. The UNIQUE event_key, not
+   * the caller, is what settles the duplicate case.
+   */
+  async add(n: AppNotification): Promise<AppNotification | null> {
+    const row: AppNotification = {
+      ...n,
+      kind: toNotificationKind(n.kind),
+      event_key: clamp(n.event_key, NOTIFICATION_LIMITS.event_key),
+      title: clamp(n.title, NOTIFICATION_LIMITS.title),
+      body: clamp(n.body, NOTIFICATION_LIMITS.body),
+      link_kind: toLinkKind(n.link_kind),
+      read: n.read ? 1 : 0,
+    };
+    // Without a title there is nothing to render, and without a key the
+    // UNIQUE index can't do its job.
+    if (!row.title || !row.event_key) return null;
+    // A link kind that didn't survive validation would leave a dangling id.
+    if (!row.link_kind) row.link_id = "";
+
+    const db = await getDb();
+    const res = await db.execute(
+      `INSERT OR IGNORE INTO notifications
+         (id, kind, event_key, title, body, link_kind, link_id, read, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        row.id,
+        row.kind,
+        row.event_key,
+        row.title,
+        row.body,
+        row.link_kind,
+        row.link_id,
+        row.read,
+        row.created_at,
+      ]
+    );
+    return res.rowsAffected > 0 ? row : null;
+  },
+
+  async markRead(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("UPDATE notifications SET read = 1 WHERE id = ?", [id]);
+  },
+
+  async markAllRead(): Promise<void> {
+    const db = await getDb();
+    await db.execute("UPDATE notifications SET read = 1 WHERE read = 0");
+  },
+
+  async remove(id: string): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM notifications WHERE id = ?", [id]);
+  },
+
+  async clear(): Promise<void> {
+    const db = await getDb();
+    await db.execute("DELETE FROM notifications");
+  },
+
+  /**
+   * Keep the feed bounded, and disarm links whose item is gone — a deleted
+   * task or trashed note would otherwise open to nothing. The entry itself
+   * stays: "Task due: pay rent" is still true after the task is deleted.
+   * Run on load and whenever the cap is passed.
+   */
+  async prune(): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `DELETE FROM notifications WHERE id NOT IN (
+         SELECT id FROM notifications ORDER BY created_at DESC LIMIT ?
+       )`,
+      [NOTIFICATION_CAP]
+    );
+    await db.execute(
+      `UPDATE notifications SET link_kind = '', link_id = ''
+       WHERE (link_kind = 'task'   AND link_id NOT IN (SELECT id FROM tasks))
+          OR (link_kind = 'note'   AND link_id NOT IN (SELECT id FROM notes WHERE archived = 0))
+          OR (link_kind = 'sticky' AND link_id NOT IN (SELECT id FROM sticky_notes))
+          OR (link_kind = 'worker' AND link_id NOT IN (SELECT id FROM workers))
+          OR link_kind NOT IN ('', 'task', 'note', 'sticky', 'worker')`
     );
   },
 };

@@ -23,8 +23,8 @@ export default {
         ],
       },
       boxShadow: {
-        soft: "0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.06)",
-        pop: "0 8px 30px rgb(0 0 0 / 0.12)",
+        soft: "0 1px 2px rgb(0 0 0 / 0.05)",
+        pop: "0 0 0 1px rgb(0 0 0 / 0.04), 0 2px 8px rgb(0 0 0 / 0.08), 0 12px 32px rgb(0 0 0 / 0.16)",
       },
     },
   },

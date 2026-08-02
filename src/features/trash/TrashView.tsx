@@ -1,47 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Trash2, Undo2, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
+import ConfirmButton from "../../components/ConfirmButton";
+import { EmptyState } from "../../components/ui";
 import { relativeTime } from "../../lib/util";
-import { cn } from "../../lib/util";
-
-/** Two-step destructive button: first click arms it, second click fires. */
-function ConfirmButton({
-  label,
-  confirmLabel,
-  onConfirm,
-  className,
-}: {
-  label: React.ReactNode;
-  confirmLabel: string;
-  onConfirm: () => void;
-  className?: string;
-}) {
-  const [armed, setArmed] = useState(false);
-
-  useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 2500);
-    return () => clearTimeout(t);
-  }, [armed]);
-
-  return (
-    <button
-      onClick={() => (armed ? onConfirm() : setArmed(true))}
-      onBlur={() => setArmed(false)}
-      className={cn(
-        "rounded-md px-2 py-1 text-[12px] transition",
-        armed
-          ? "bg-red-500/15 font-medium text-red-500"
-          : "text-muted hover:bg-elevated hover:text-red-500",
-        className
-      )}
-    >
-      {armed ? confirmLabel : label}
-    </button>
-  );
-}
 
 export default function TrashView() {
   const trashed = useNotes((s) => s.trashed);
@@ -51,7 +16,6 @@ export default function TrashView() {
   const emptyTrash = useNotes((s) => s.emptyTrash);
   const select = useNotes((s) => s.select);
   const setView = useUI((s) => s.setView);
-  const showToast = useUI((s) => s.showToast);
 
   useEffect(() => {
     loadTrash();
@@ -59,11 +23,16 @@ export default function TrashView() {
 
   const restoreAndShow = async (id: string) => {
     await restore(id);
-    showToast("Note restored", {
-      label: "Open",
-      run: () => {
-        select(id);
-        setView("notes");
+    void announce({
+      kind: "note",
+      title: "Note restored",
+      link: { kind: "note", id },
+      toast: {
+        label: "Open",
+        run: () => {
+          select(id);
+          setView("notes");
+        },
       },
     });
   };
@@ -71,7 +40,7 @@ export default function TrashView() {
   return (
     <div className="flex h-full flex-col">
       <header className="drag-region flex h-11 items-center justify-between px-6">
-        <h2 className="no-drag text-xl font-semibold">Trash</h2>
+        <h2 className="no-drag text-lg font-semibold tracking-tight">Trash</h2>
         {trashed.length > 0 && (
           <ConfirmButton
             label="Empty trash"
@@ -83,13 +52,11 @@ export default function TrashView() {
       </header>
 
       {trashed.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
-          <Trash2 size={28} className="opacity-40" />
-          <p>Trash is empty.</p>
-          <p className="text-xs text-muted/70">
-            Notes you delete land here and can be restored.
-          </p>
-        </div>
+        <EmptyState
+          icon={Trash2}
+          title="Trash is empty"
+          hint="Notes you delete land here and can be restored."
+        />
       ) : (
         <div className="mx-auto w-full max-w-[680px] flex-1 overflow-y-auto px-6 pb-10">
           <AnimatePresence initial={false}>

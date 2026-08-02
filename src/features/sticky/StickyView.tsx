@@ -4,6 +4,7 @@ import { Plus, StickyNote, X, ExternalLink } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSticky } from "../../store/sticky";
 import { STICKY_COLORS } from "../../lib/types";
+import { Button, EmptyState } from "../../components/ui";
 
 export default function StickyView() {
   const stickies = useSticky((s) => s.stickies);
@@ -25,26 +26,24 @@ export default function StickyView() {
   return (
     <div className="flex h-full flex-col">
       <header className="drag-region flex h-11 items-center justify-between px-6">
-        <h2 className="no-drag text-xl font-semibold">Sticky Notes</h2>
-        <button
-          onClick={newSticky}
-          className="no-drag flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft transition hover:opacity-90"
-        >
-          <Plus size={16} /> New sticky
-        </button>
+        <h2 className="no-drag text-lg font-semibold tracking-tight">
+          Sticky Notes
+        </h2>
+        <Button variant="primary" size="lg" className="no-drag" onClick={newSticky}>
+          <Plus size={15} /> New sticky
+        </Button>
       </header>
 
       {stickies.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
-          <StickyNote size={30} className="opacity-40" />
-          <p>No sticky notes yet.</p>
-          <button
-            onClick={newSticky}
-            className="mt-1 rounded-md bg-accent/15 px-3 py-1.5 text-accent transition hover:bg-accent/25"
-          >
-            Create a sticky
-          </button>
-        </div>
+        <EmptyState
+          icon={StickyNote}
+          title="No sticky notes yet"
+          hint="Stickies float above every other window — perfect for the thing you must not forget."
+        >
+          <Button variant="primary" onClick={newSticky}>
+            <Plus size={13} /> Create a sticky
+          </Button>
+        </EmptyState>
       ) : (
         <div className="grid flex-1 auto-rows-min grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4 overflow-y-auto p-6 pt-2">
           <AnimatePresence>

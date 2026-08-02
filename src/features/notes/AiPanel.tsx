@@ -20,6 +20,7 @@ import { useAi } from "../../store/ai";
 import { useTasks } from "../../store/tasks";
 import { useMemory } from "../../store/memory";
 import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
 import type { Note } from "../../lib/types";
 import { cn } from "../../lib/util";
 
@@ -154,9 +155,11 @@ export default function AiPanel({
       .filter((l) => l && !/^no action items/i.test(l));
     for (const line of lines) await addTask(line);
     close();
-    showToast(`Added ${lines.length} task${lines.length === 1 ? "" : "s"}`, {
-      label: "View",
-      run: () => setView("tasks"),
+    void announce({
+      kind: "ai",
+      title: `Added ${lines.length} task${lines.length === 1 ? "" : "s"}`,
+      body: lines.slice(0, 3).join(" · "),
+      toast: { label: "View", run: () => setView("tasks") },
     });
   };
 

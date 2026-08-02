@@ -54,6 +54,31 @@ Keep the summary in the imperative mood and under ~72 characters, e.g.
   migration that has already shipped.
 - Match the existing formatting, naming, and structure of nearby code.
 
+### Touching the Database
+
+Everything the user owns lives in one local SQLite file with no server and no
+backup, so writes get held to a few rules:
+
+- **Parameterize every query.** Values go in as `?` bindings. Where a column
+  name has to be interpolated (`setClause`), it comes from an allowlist — never
+  from a caller's object keys.
+- **Validate at the repository boundary**, not at the call sites. Coerce enum
+  columns with a `to…()` helper (`toBoardStage`, `toNotificationKind`) and clamp
+  free text that has no natural length limit — worker output and error strings
+  are unbounded, and these rows are kept indefinitely.
+- **Optimistic updates must roll back.** Stores paint before they store; if the
+  write throws, put the previous state back rather than leaving the UI
+  disagreeing with the table until the next launch.
+- **A failed write must not break the app.** Catch it, log it, degrade. Nothing
+  in a secondary feature is worth taking the workspace down for.
+- **Bound anything that grows on its own.** Append-only tables need a cap
+  enforced on the write path, not only on load.
+- **Destructive actions confirm.** Use `ConfirmButton` for anything that deletes
+  rows the user can't get back.
+- **Cross-table links have no foreign keys** (cards and notifications point at
+  four different tables). Prune or disarm the dangling ones on load, the way
+  `boardRepo.prune()` does.
+
 ## Before You Open a PR
 
 - [ ] `npm run build` passes (type-check + build).

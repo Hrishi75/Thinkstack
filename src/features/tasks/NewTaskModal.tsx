@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { CalendarDays, Flag } from "lucide-react";
 import { useTasks } from "../../store/tasks";
-import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
 import type { Recurrence } from "../../lib/types";
 import { cn } from "../../lib/util";
+import { Button } from "../../components/ui";
 import { dueLabel, dueTooltip } from "../../lib/dates";
 import { reminderLabel } from "../../lib/notifications";
 import {
@@ -24,7 +25,6 @@ export default function NewTaskModal({
   onClose: () => void;
 }) {
   const add = useTasks((s) => s.add);
-  const showToast = useUI((s) => s.showToast);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -61,11 +61,14 @@ export default function NewTaskModal({
     });
     if (due !== null) {
       const remind = reminderLabel(due, hasTime);
-      showToast(
-        remind
+      void announce({
+        kind: "task_scheduled",
+        title: remind
           ? `Task added — reminds ${remind}`
-          : "Task added — no reminder, that time already passed"
-      );
+          : "Task added — no reminder, that time already passed",
+        body: title,
+        toast: true,
+      });
     }
     onClose();
   };
@@ -74,7 +77,7 @@ export default function NewTaskModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 pt-[14vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[14vh] backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -206,27 +209,13 @@ export default function NewTaskModal({
               <span className="pl-1 text-[11px] text-muted/70">
                 ⏎ create · esc close
               </span>
-              <span className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-lg px-3 py-1.5 text-sm text-muted transition hover:bg-elevated hover:text-text"
-                >
+              <span className="flex items-center gap-1.5">
+                <Button size="lg" onClick={onClose}>
                   Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={create}
-                  disabled={!canCreate}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-sm font-medium text-white transition",
-                    canCreate
-                      ? "bg-accent hover:opacity-90"
-                      : "cursor-not-allowed bg-accent/40"
-                  )}
-                >
+                </Button>
+                <Button variant="primary" size="lg" onClick={create} disabled={!canCreate}>
                   Create task
-                </button>
+                </Button>
               </span>
             </div>
           </motion.div>

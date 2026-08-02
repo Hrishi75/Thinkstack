@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { Worker, WorkerStatus, WorkItem } from "../lib/types";
 import { workersRepo } from "../lib/repo";
 import { now } from "../lib/db";
+import { announce } from "./notifications";
 
 /** Log lines kept per worker; older lines scroll out of memory. */
 const LOG_CAP = 400;
@@ -279,6 +280,24 @@ export const useOrchestrator = create<OrchState>((set, get) => ({
       }));
       // Fire-and-forget: the UI already reflects it.
       void workersRepo.update(id, { status, error, session_id, cost_usd });
+
+      // A worker finishes on its own schedule, usually while the user is in
+      // another view or another app — so this is both a banner and an entry.
+      if (status === "review" || status === "failed") {
+        const worker = get().workers.find((w) => w.id === id);
+        const label = worker?.title || worker?.branch || "Worker";
+        void announce({
+          kind: status === "review" ? "worker_review" : "worker_failed",
+          eventKey: `worker:${id}:${status}`,
+          title:
+            status === "review"
+              ? `Ready to review: ${label}`
+              : `Worker failed: ${label}`,
+          body: status === "review" ? worker?.repo_label ?? "" : error,
+          link: { kind: "worker", id },
+          desktop: true,
+        });
+      }
     });
 
     return () => {

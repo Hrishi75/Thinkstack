@@ -24,6 +24,7 @@ import { useMemory } from "../../store/memory";
 import { searchNotes } from "../../lib/repo";
 import type { SearchHit } from "../../lib/types";
 import { cn, relativeTime } from "../../lib/util";
+import { Kbd } from "../../components/ui";
 
 interface Action {
   id: string;
@@ -64,14 +65,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <div className="px-3 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted/70">
       {children}
     </div>
-  );
-}
-
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="rounded bg-black/[0.04] px-1 py-0.5 text-[10px] leading-none text-muted dark:bg-white/[0.06]">
-      {children}
-    </kbd>
   );
 }
 
@@ -259,7 +252,7 @@ export default function CommandPalette() {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 pt-[12vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[12vh] backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -286,7 +279,7 @@ export default function CommandPalette() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="Search notes or run a command…"
-                className="w-full bg-transparent py-3.5 text-[15px] outline-none placeholder:text-muted/70"
+                className="w-full bg-transparent py-3.5 text-[14px] outline-none placeholder:text-muted/70"
               />
               {query && (
                 <button

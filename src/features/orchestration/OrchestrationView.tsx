@@ -17,13 +17,14 @@ import {
   Play,
 } from "lucide-react";
 import { useOrchestrator, WORKER_MODELS } from "../../store/orchestrator";
-import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
 import {
   WORKER_STATUS_STYLES,
   type Worker,
   type WorkItem,
 } from "../../lib/types";
 import { cn, relativeTime } from "../../lib/util";
+import { Button } from "../../components/ui";
 
 /** Colorize a unified diff so review is readable at a glance. */
 function Diff({ text }: { text: string }) {
@@ -62,7 +63,7 @@ function DiffModal({
 }) {
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 pt-[8vh] backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[8vh] backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -110,7 +111,6 @@ function WorkerCard({ worker }: { worker: Worker }) {
   const diff = useOrchestrator((s) => s.diff);
   const approve = useOrchestrator((s) => s.approve);
   const discard = useOrchestrator((s) => s.discard);
-  const showToast = useUI((s) => s.showToast);
 
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -145,10 +145,13 @@ function WorkerCard({ worker }: { worker: Worker }) {
   const doApprove = (openPr: boolean) =>
     guard("approve", async () => {
       const url = await approve(worker, openPr);
-      showToast(
-        url ? "Pushed and opened a pull request" : "Branch pushed to origin",
-        url ? { label: "Open PR", run: () => void openUrl(url) } : undefined
-      );
+      void announce({
+        kind: "worker_done",
+        title: url ? "Pushed and opened a pull request" : "Branch pushed to origin",
+        body: [worker.title, url].filter(Boolean).join(" — "),
+        link: { kind: "worker", id: worker.id },
+        toast: url ? { label: "Open PR", run: () => void openUrl(url) } : true,
+      });
     });
 
   return (
@@ -312,7 +315,6 @@ function WorkerCard({ worker }: { worker: Worker }) {
 
 function QueueRow({ item, busy }: { item: WorkItem; busy: boolean }) {
   const start = useOrchestrator((s) => s.start);
-  const showToast = useUI((s) => s.showToast);
   const [starting, setStarting] = useState(false);
 
   const run = async () => {
@@ -320,7 +322,14 @@ function QueueRow({ item, busy }: { item: WorkItem; busy: boolean }) {
     try {
       await start(item);
     } catch (e) {
-      showToast(String(e));
+      // Spawning touches git, gh and the filesystem; the reason it failed is
+      // worth keeping around rather than vanishing with the toast.
+      void announce({
+        kind: "error",
+        title: `Couldn't start a worker on #${item.number}`,
+        body: String(e),
+        toast: true,
+      });
     } finally {
       setStarting(false);
     }
@@ -411,8 +420,8 @@ export default function OrchestrationView() {
       <div className="mx-auto flex w-full max-w-[900px] flex-1 flex-col overflow-hidden px-6">
         <div className="flex items-start justify-between pb-3">
           <div>
-            <h2 className="text-xl font-semibold">Orchestration</h2>
-            <p className="mt-0.5 text-[13px] text-muted">
+            <h2 className="text-lg font-semibold tracking-tight">Orchestration</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted">
               Run parallel Claude Code workers on GitHub issues and PRs — each in
               its own git worktree. Nothing is pushed until you approve it.
             </p>
@@ -459,10 +468,11 @@ export default function OrchestrationView() {
               </option>
             ))}
           </select>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             onClick={refreshQueue}
             disabled={!repoPath || queueLoading}
-            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-[12.5px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
           >
             {queueLoading ? (
               <Loader2 size={13} className="animate-spin" />
@@ -470,7 +480,7 @@ export default function OrchestrationView() {
               <RefreshCw size={13} />
             )}
             Load work
-          </button>
+          </Button>
         </div>
 
         <div className="no-drag mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted">

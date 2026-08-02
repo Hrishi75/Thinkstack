@@ -3,26 +3,26 @@
 @tailwind utilities;
 
 :root {
-  /* Notion-like light palette */
-  --bg: 255 255 255;
-  --surface: 247 247 245; /* sidebar / panels */
-  --elevated: 239 239 237; /* hover / selected fills */
-  --border: 237 237 236;
-  --text: 55 53 47;
-  --muted: 145 145 142;
-  --accent: 35 131 226; /* Notion blue */
+  /* Sleek light palette — cool neutrals, indigo accent */
+  --bg: 252 252 253;
+  --surface: 246 247 249;
+  --elevated: 236 237 241;
+  --border: 227 228 233;
+  --text: 40 42 48;
+  --muted: 110 114 124;
+  --accent: 94 106 210;
   color-scheme: light;
 }
 
 .dark {
-  /* Notion-like dark palette */
-  --bg: 25 25 25;
-  --surface: 32 32 32;
-  --elevated: 47 47 47;
-  --border: 47 47 47;
-  --text: 235 235 235;
-  --muted: 155 155 150;
-  --accent: 70 152 235;
+  /* Deep charcoal dark — hairline borders, lifted text */
+  --bg: 15 16 19;
+  --surface: 21 22 26;
+  --elevated: 33 35 41;
+  --border: 42 44 52;
+  --text: 228 229 233;
+  --muted: 133 138 148;
+  --accent: 125 135 235;
   color-scheme: dark;
 }
 
@@ -43,8 +43,8 @@ body {
   color: rgb(var(--text));
   font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
     Inter, system-ui, sans-serif;
-  font-size: 15px;
-  letter-spacing: -0.01em;
+  font-size: 14px;
+  letter-spacing: -0.008em;
   overflow: hidden;
 }
 
@@ -56,7 +56,7 @@ body.window-capture {
 
 /* Text selection + caret pick up the accent color */
 ::selection {
-  background: rgb(var(--accent) / 0.22);
+  background: rgb(var(--accent) / 0.25);
 }
 input,
 textarea,
@@ -69,7 +69,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible {
-  outline: 2px solid rgb(var(--accent) / 0.45);
+  outline: 2px solid rgb(var(--accent) / 0.55);
   outline-offset: 1px;
 }
 
@@ -90,12 +90,12 @@ textarea:focus-visible,
 }
 
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgb(var(--border));
-  border-radius: 6px;
+  background: rgb(var(--muted) / 0.28);
+  border-radius: 5px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -104,20 +104,20 @@ textarea:focus-visible,
   background-clip: content-box;
 }
 
-/* BlockNote editor blends with the app theme (Notion-like spacing) */
+/* BlockNote editor blends with the app theme */
 .bn-container,
 .bn-editor {
   background: transparent !important;
 }
 .bn-editor {
   padding-inline: 0 !important;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.65;
 }
 .bn-block-content {
   padding-block: 3px;
 }
-/* gentle placeholder like Notion */
+/* gentle placeholder */
 .bn-inline-content:empty::before {
   color: rgb(var(--muted) / 0.7);
 }

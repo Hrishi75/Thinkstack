@@ -277,6 +277,70 @@ export interface BoardPlacement {
   updated_at: number;
 }
 
+/* -------------------------- Notifications -------------------------- */
+
+/**
+ * What a notification is about; picks its icon and tint. Widening this list
+ * needs no migration — `kind` is plain TEXT — but every value must appear in
+ * NOTIFICATION_TONES, which is what `toNotificationKind` validates against.
+ */
+export type NotificationKind =
+  | "task_due"
+  | "task_scheduled"
+  | "note"
+  | "ai"
+  | "worker_review"
+  | "worker_done"
+  | "worker_failed"
+  | "system"
+  | "error";
+
+/**
+ * One entry in the in-app feed. Unlike a desktop banner it sticks around
+ * until the user reads or clears it, and it remembers what to open.
+ */
+export interface AppNotification {
+  id: string;
+  kind: NotificationKind;
+  /** Stable id of the event behind it; recorded at most once. */
+  event_key: string;
+  title: string;
+  body: string;
+  /** Item to open on click; "" when there's nothing to go to. */
+  link_kind: BoardKind | "";
+  link_id: string;
+  read: number;
+  created_at: number;
+}
+
+export const NOTIFICATION_TONES: Record<NotificationKind, string> = {
+  task_due: "text-sky-500",
+  task_scheduled: "text-slate-500",
+  note: "text-slate-500",
+  ai: "text-purple-500",
+  worker_review: "text-amber-500",
+  worker_done: "text-green-500",
+  worker_failed: "text-red-500",
+  system: "text-slate-500",
+  error: "text-red-500",
+};
+
+export const NOTIFICATION_KINDS = Object.keys(
+  NOTIFICATION_TONES
+) as NotificationKind[];
+
+/** Coerce a stored kind string to a known one. */
+export function toNotificationKind(raw: string): NotificationKind {
+  return (NOTIFICATION_KINDS as string[]).includes(raw)
+    ? (raw as NotificationKind)
+    : "system";
+}
+
+/** Coerce a stored link kind to a known one; "" means nothing to open. */
+export function toLinkKind(raw: string): BoardKind | "" {
+  return BOARD_KINDS.some((k) => k.key === raw) ? (raw as BoardKind) : "";
+}
+
 export interface SearchHit {
   note_id: string;
   title: string;

@@ -13,6 +13,7 @@ import {
 import { useTasks } from "../../store/tasks";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
 import { RECURRENCE_LABELS, type Task } from "../../lib/types";
 import { cn } from "../../lib/util";
 import {
@@ -39,7 +40,6 @@ export default function TaskItem({ task }: { task: Task }) {
   const notes = useNotes((s) => s.notes);
   const selectNote = useNotes((s) => s.select);
   const setView = useUI((s) => s.setView);
-  const showToast = useUI((s) => s.showToast);
 
   const [menu, setMenu] = useState<"due" | "priority" | "link" | null>(null);
   const [noteQuery, setNoteQuery] = useState("");
@@ -87,12 +87,18 @@ export default function TaskItem({ task }: { task: Task }) {
     setView("notes");
   };
 
-  // Completing a repeating task rolls forward instead of checking off, so
-  // the row never animates — a toast is the only feedback the user gets.
+  // Completing a repeating task rolls forward instead of checking off, so the
+  // row never animates — without this the user gets no feedback at all.
   const completeTask = () => {
     if (!task.done && task.recur && task.due_at !== null) {
       const next = nextOccurrence(task.due_at, task.recur, task.due_has_time);
-      showToast(`Completed — next ${dueLabel(next, task.due_has_time)}`);
+      void announce({
+        kind: "task_scheduled",
+        title: `Completed — next ${dueLabel(next, task.due_has_time)}`,
+        body: task.title,
+        link: { kind: "task", id: task.id },
+        toast: true,
+      });
     }
     toggle(task.id);
   };

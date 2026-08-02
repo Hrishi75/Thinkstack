@@ -3,9 +3,10 @@ import { nanoid } from "nanoid";
 import type { Recurrence, Task } from "../lib/types";
 import { tasksRepo } from "../lib/repo";
 import { now } from "../lib/db";
-import { nextOccurrence } from "../lib/dates";
+import { dueLabel, nextOccurrence } from "../lib/dates";
 import { debounce } from "../lib/util";
 import { notify, reminderAt } from "../lib/notifications";
+import { announce } from "./notifications";
 
 // Title edits arrive one keystroke at a time; batch the DB write per task so
 // typing stays smooth while the in-memory state updates instantly.
@@ -189,6 +190,22 @@ export const useTasks = create<TasksState>((set, get) => ({
       tasks: s.tasks.map((t) => (ids.has(t.id) ? { ...t, notified: 1 } : t)),
     }));
     await Promise.all(due.map((t) => tasksRepo.update(t.id, { notified: 1 })));
+    // One desktop banner summarizes the batch; the feed keeps an entry per
+    // task so each can be opened and dismissed on its own once it's gone.
+    await Promise.all(
+      due.map((t) =>
+        announce({
+          kind: "task_due",
+          // Keyed by the due moment, so rescheduling the task notifies again
+          // but the once-a-minute sweep never repeats itself.
+          eventKey: `task-due:${t.id}:${t.due_at}`,
+          title: t.title || "Untitled task",
+          body: t.due_at === null ? "" : `Due ${dueLabel(t.due_at, t.due_has_time)}`,
+          link: { kind: "task", id: t.id },
+        })
+      )
+    );
+
     const body =
       due
         .slice(0, 3)

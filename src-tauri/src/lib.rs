@@ -158,7 +158,21 @@ pub fn run() {
             sql: include_str!("../migrations/0012_board.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 13,
+            description: "add notifications table for the in-app feed",
+            sql: include_str!("../migrations/0013_notifications.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
+
+    // Versions must be unique and ascending. A duplicate or out-of-order one
+    // silently skips a migration at startup, and the symptom — a missing
+    // column, much later — points nowhere near the cause.
+    debug_assert!(
+        migrations.windows(2).all(|w| w[0].version < w[1].version),
+        "migrations must be registered in ascending, unique version order"
+    );
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

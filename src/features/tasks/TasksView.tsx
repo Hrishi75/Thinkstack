@@ -15,7 +15,7 @@ import {
 import { Plus, CheckSquare } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useTasks } from "../../store/tasks";
-import { cn } from "../../lib/util";
+import { Button, EmptyState, PillTabs } from "../../components/ui";
 import TaskItem from "./TaskItem";
 import NewTaskModal from "./NewTaskModal";
 
@@ -61,19 +61,21 @@ export default function TasksView() {
       <div className="mx-auto flex w-full max-w-[680px] flex-1 flex-col overflow-hidden px-6">
         <div className="flex items-center justify-between pb-3">
           <div className="flex items-baseline gap-3">
-            <h2 className="text-xl font-semibold">Tasks</h2>
-            <span className="text-sm text-muted">
+            <h2 className="text-lg font-semibold tracking-tight">Tasks</h2>
+            <span className="text-[13px] text-muted">
               {remaining === 0 && tasks.length > 0
                 ? "All done 🎉"
                 : `${remaining} remaining`}
             </span>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
+            className="no-drag"
             onClick={() => setModalOpen(true)}
-            className="no-drag flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft transition hover:opacity-90"
           >
-            <Plus size={16} /> New task
-          </button>
+            <Plus size={15} /> New task
+          </Button>
         </div>
 
         {tasks.length > 0 && (
@@ -92,25 +94,15 @@ export default function TasksView() {
 
         {tasks.length > 0 && (
           <div className="no-drag mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-1">
-              {FILTERS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilter(key)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12.5px] transition",
-                    filter === key
-                      ? "bg-elevated font-medium text-text"
-                      : "text-muted hover:bg-elevated/60 hover:text-text"
-                  )}
-                >
-                  {label}
-                  <span className="text-[10.5px] tabular-nums opacity-60">
-                    {filterCount(key)}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <PillTabs
+              items={FILTERS.map(({ key, label }) => ({
+                key,
+                label,
+                count: filterCount(key),
+              }))}
+              value={filter}
+              onChange={setFilter}
+            />
             {completedCount > 0 && (
               <button
                 onClick={clearCompleted}
@@ -123,25 +115,24 @@ export default function TasksView() {
         )}
 
         {tasks.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
-            <CheckSquare size={28} className="opacity-40" />
-            <p>No tasks yet.</p>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="mt-1 rounded-md bg-accent/15 px-3 py-1.5 text-accent transition hover:bg-accent/25"
-            >
-              Create a task
-            </button>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks yet"
+            hint="Capture what needs doing — due dates, priorities and repeats included."
+          >
+            <Button variant="primary" onClick={() => setModalOpen(true)}>
+              <Plus size={13} /> Create a task
+            </Button>
+          </EmptyState>
         ) : visible.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
-            <CheckSquare size={28} className="opacity-40" />
-            <p>
-              {filter === "completed"
-                ? "No completed tasks yet."
-                : "Nothing here — all done!"}
-            </p>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title={
+              filter === "completed"
+                ? "No completed tasks yet"
+                : "Nothing here — all done!"
+            }
+          />
         ) : (
           <div className="flex-1 overflow-y-auto pb-10">
             <DndContext

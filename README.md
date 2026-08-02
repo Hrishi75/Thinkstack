@@ -74,8 +74,7 @@ Orchestration tells you which of these are missing rather than failing silently.
 |----------|--------|
 | `⌘K` / `Ctrl+K` | Open the command palette / search |
 | `⌘N` / `Ctrl+N` | Create a new note |
-| `⌘0` | Switch to the Board |
-| `⌘1` … `⌘7` | Switch view (Notes / Tasks / Calendar / Sticky / Memory / Orchestration / Trash) |
+| `⌘1` … `⌘8` | Switch view (Board / Notes / Tasks / Calendar / Sticky / Memory / Orchestration / Trash) — mirrors the sidebar top to bottom; hover a sidebar item to see its shortcut |
 | `⌘⇧Space` | Toggle quick capture (works globally) |
 
 ## 📚 Documentation

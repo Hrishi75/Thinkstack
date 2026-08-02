@@ -7,6 +7,7 @@ import "@blocknote/mantine/style.css";
 import { Trash2, Clock, Copy } from "lucide-react";
 import { useNotes } from "../../store/notes";
 import { useUI } from "../../store/ui";
+import { announce } from "../../store/notifications";
 import { blocksToText, countWords, debounce, relativeTime } from "../../lib/util";
 import { dateTimeLabel } from "../../lib/dates";
 import type { Note } from "../../lib/types";
@@ -38,9 +39,13 @@ export default function NoteEditor({ note }: { note: Note }) {
 
   const moveToTrash = async () => {
     await archive(note.id);
-    showToast("Note moved to trash", {
-      label: "Undo",
-      run: () => restore(note.id),
+    // Deliberately unlinked: the note is out of the notes list now, so a
+    // click would open an empty editor. Undo lives on the toast instead.
+    void announce({
+      kind: "note",
+      title: "Note moved to trash",
+      body: note.title,
+      toast: { label: "Undo", run: () => void restore(note.id) },
     });
   };
 
@@ -121,7 +126,7 @@ export default function NoteEditor({ note }: { note: Note }) {
           <div className="relative pt-4">
             <button
               onClick={() => setPickerOpen((v) => !v)}
-              className="rounded-lg px-1 text-[52px] leading-none transition hover:bg-elevated"
+              className="rounded-lg px-1 text-[44px] leading-none transition hover:bg-elevated"
             >
               {icon}
             </button>
@@ -148,7 +153,7 @@ export default function NoteEditor({ note }: { note: Note }) {
               saveTitle(note.id, e.target.value);
             }}
             placeholder="Untitled"
-            className="mt-2 w-full bg-transparent text-[40px] font-bold leading-tight tracking-tight outline-none placeholder:text-muted/50"
+            className="mt-2 w-full bg-transparent text-[32px] font-semibold leading-tight tracking-tight outline-none placeholder:text-muted/50"
           />
 
           {/* Created / edited stamps */}

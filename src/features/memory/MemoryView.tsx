@@ -11,6 +11,7 @@ import {
   type MemoryCategory,
 } from "../../lib/types";
 import { cn, debounce, relativeTime } from "../../lib/util";
+import { Button, PillTabs } from "../../components/ui";
 
 /** Category-specific prompts, so an empty card still shows what belongs in it. */
 const PLACEHOLDERS: Record<MemoryCategory, string> = {
@@ -218,18 +219,20 @@ export default function MemoryView() {
       <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col overflow-hidden px-6">
         <div className="flex items-start justify-between pb-3">
           <div>
-            <h2 className="text-xl font-semibold">Memory</h2>
-            <p className="mt-0.5 text-[13px] text-muted">
+            <h2 className="text-lg font-semibold tracking-tight">Memory</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted">
               Standing context the AI gets on every request — so you never explain
               your company twice.
             </p>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
+            className="no-drag mt-0.5"
             onClick={() => create()}
-            className="no-drag mt-0.5 flex shrink-0 items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white shadow-soft transition hover:opacity-90"
           >
-            <Plus size={16} /> New memory
-          </button>
+            <Plus size={15} /> New memory
+          </Button>
         </div>
 
         {memories.length > 0 && (
@@ -274,25 +277,16 @@ export default function MemoryView() {
         </AnimatePresence>
 
         {usedCategories.length > 1 && (
-          <div className="no-drag mb-2 flex flex-wrap items-center gap-1">
-            {(["all", ...usedCategories] as const).map((key) => (
-              <button
-                key={key}
-                onClick={() => setFilter(key)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[12.5px] transition",
-                  filter === key
-                    ? "bg-elevated font-medium text-text"
-                    : "text-muted hover:bg-elevated/60 hover:text-text"
-                )}
-              >
-                {key === "all" ? "All" : MEMORY_CATEGORIES[key].label}
-                <span className="text-[10.5px] tabular-nums opacity-60">
-                  {key === "all" ? memories.length : countIn(key)}
-                </span>
-              </button>
-            ))}
-          </div>
+          <PillTabs
+            className="no-drag mb-2 flex-wrap"
+            items={(["all", ...usedCategories] as const).map((key) => ({
+              key,
+              label: key === "all" ? "All" : MEMORY_CATEGORIES[key].label,
+              count: key === "all" ? memories.length : countIn(key),
+            }))}
+            value={filter}
+            onChange={setFilter}
+          />
         )}
 
         <div className="no-drag flex-1 overflow-y-auto pb-6">

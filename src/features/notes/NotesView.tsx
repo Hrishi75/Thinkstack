@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Plus, FileText, Pin } from "lucide-react";
 import { useNotes } from "../../store/notes";
 import { cn, relativeTime } from "../../lib/util";
+import { Button, EmptyState } from "../../components/ui";
 import { tagStyle, tagHex } from "./tagStyle";
 
 // Lazy-load the heavy BlockNote editor to keep cold start fast.
@@ -83,27 +84,17 @@ export default function NotesView() {
         )}
 
         {notes.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted">
-            <FileText size={28} className="opacity-40" />
-            <p>No notes yet.</p>
-            <button
-              onClick={() => create()}
-              className="mt-1 rounded-md bg-accent/15 px-3 py-1.5 text-accent transition hover:bg-accent/25"
-            >
-              Create your first note
-            </button>
-          </div>
+          <EmptyState icon={FileText} title="No notes yet">
+            <Button variant="primary" onClick={() => create()}>
+              <Plus size={13} /> Create your first note
+            </Button>
+          </EmptyState>
         ) : visibleNotes.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted">
-            <FileText size={28} className="opacity-40" />
-            <p>No notes with this tag.</p>
-            <button
-              onClick={() => setActiveTag(activeTagId)}
-              className="mt-1 rounded-md bg-elevated px-3 py-1.5 text-text transition hover:bg-elevated/70"
-            >
+          <EmptyState icon={FileText} title="No notes with this tag">
+            <Button variant="outline" onClick={() => setActiveTag(activeTagId)}>
               Clear filter
-            </button>
-          </div>
+            </Button>
+          </EmptyState>
         ) : (
           <div ref={parentRef} className="flex-1 overflow-y-auto px-2 pb-3">
             <div
@@ -188,8 +179,12 @@ export default function NotesView() {
             <NoteEditor key={selected.id} note={selected} />
           </Suspense>
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-muted">
-            Select or create a note
+          <div className="flex h-full flex-col">
+            <EmptyState
+              icon={FileText}
+              title="Nothing open"
+              hint="Select a note from the list, or press ⌘N to start a new one."
+            />
           </div>
         )}
       </div>

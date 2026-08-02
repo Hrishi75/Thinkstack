@@ -92,7 +92,7 @@ function CardBody({ card }: { card: Card }) {
   return (
     <div
       onClick={open}
-      className="flex cursor-pointer gap-2 rounded-lg border border-border/80 bg-surface p-2.5 shadow-soft transition hover:border-border"
+      className="flex cursor-pointer gap-2 rounded-lg border border-border/70 bg-bg p-2.5 shadow-soft transition hover:border-accent/40"
     >
       {/* A sticky keeps its own color; every other card gets its domain icon. */}
       {swatch ? (

@@ -25,6 +25,7 @@ import {
 } from "../../store/board";
 import { BOARD_KINDS, BOARD_STAGES, type BoardStage } from "../../lib/types";
 import { cn } from "../../lib/util";
+import { EmptyState } from "../../components/ui";
 import BoardCard, { BoardCardOverlay } from "./BoardCard";
 
 /** Droppable id for a column, kept distinct from card keys (`kind:id`). */
@@ -56,7 +57,7 @@ function QuickAdd({ stage }: { stage: BoardStage }) {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-1.5 shadow-soft">
+    <div className="rounded-lg border border-border bg-bg p-1.5 shadow-soft">
       <input
         autoFocus
         value={title}
@@ -124,8 +125,10 @@ function Column({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto rounded-xl border border-dashed p-1.5 transition",
-          over ? "border-accent/60 bg-accent/[0.06]" : "border-border/60"
+          "flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto rounded-xl border p-1.5 transition",
+          over
+            ? "border-accent/50 bg-accent/[0.05]"
+            : "border-transparent bg-elevated/35"
         )}
       >
         <SortableContext
@@ -230,20 +233,20 @@ export default function BoardView() {
 
       <div className="flex items-center justify-between px-6 pb-3">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xl font-semibold">Board</h2>
-          <span className="text-sm text-muted">
+          <h2 className="text-lg font-semibold tracking-tight">Board</h2>
+          <span className="text-[13px] text-muted">
             {total === 1 ? "1 card" : `${total} cards`}
           </span>
         </div>
 
         {/* Which domains contribute cards; the choice sticks between sessions. */}
-        <div className="no-drag flex items-center gap-1">
+        <div className="no-drag flex items-center gap-0.5">
           {BOARD_KINDS.map(({ key, label }) => (
             <button
               key={key}
               onClick={() => toggleKind(key)}
               className={cn(
-                "rounded-md px-2.5 py-1 text-[12.5px] transition",
+                "h-7 rounded-md px-2.5 text-[12.5px] transition",
                 kinds[key]
                   ? "bg-elevated font-medium text-text"
                   : "text-muted/70 hover:bg-elevated/60 hover:text-text"
@@ -256,13 +259,11 @@ export default function BoardView() {
       </div>
 
       {!anyKind ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2 text-sm text-muted">
-          <LayoutGrid size={28} className="opacity-40" />
-          <p>Everything is filtered out.</p>
-          <p className="text-xs text-muted/70">
-            Turn a filter back on to see your cards.
-          </p>
-        </div>
+        <EmptyState
+          icon={LayoutGrid}
+          title="Everything is filtered out"
+          hint="Turn a filter back on to see your cards."
+        />
       ) : (
         <DndContext
           sensors={sensors}

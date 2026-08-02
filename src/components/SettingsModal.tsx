@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { X, KeyRound, Check, Loader2 } from "lucide-react";
 import { useAi, PROVIDERS, DEFAULT_MODELS } from "../store/ai";
-import { useUI } from "../store/ui";
+import { announce } from "../store/notifications";
 import { cn } from "../lib/util";
 
 export default function SettingsModal() {
@@ -15,7 +15,6 @@ export default function SettingsModal() {
   const hasKey = useAi((s) => s.hasKey);
   const saveKey = useAi((s) => s.saveKey);
   const clearKey = useAi((s) => s.clearKey);
-  const showToast = useUI((s) => s.showToast);
 
   const [keyDraft, setKeyDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,7 +37,12 @@ export default function SettingsModal() {
     try {
       await saveKey(keyDraft);
       setKeyDraft("");
-      showToast("API key saved to your system keychain");
+      void announce({
+        kind: "system",
+        title: "API key saved to your system keychain",
+        body: providerLabel,
+        toast: true,
+      });
     } catch (e) {
       setError(String(e));
     } finally {
@@ -49,7 +53,12 @@ export default function SettingsModal() {
   const remove = async () => {
     try {
       await clearKey();
-      showToast("API key removed");
+      void announce({
+        kind: "system",
+        title: "API key removed",
+        body: providerLabel,
+        toast: true,
+      });
     } catch (e) {
       setError(String(e));
     }
@@ -59,7 +68,7 @@ export default function SettingsModal() {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-black/25 pt-[14vh] backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[14vh] backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -118,7 +127,7 @@ export default function SettingsModal() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   placeholder={DEFAULT_MODELS[provider]}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none transition focus:border-accent/60"
+                  className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-[13px] outline-none transition focus:border-accent/60"
                 />
               </div>
 
@@ -147,12 +156,12 @@ export default function SettingsModal() {
                             ? "gsk_…"
                             : "sk-…"
                     }
-                    className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-[13px] outline-none transition focus:border-accent/60"
+                    className="flex-1 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-[13px] outline-none transition focus:border-accent/60"
                   />
                   <button
                     onClick={save}
                     disabled={!keyDraft.trim() || saving}
-                    className="rounded-lg bg-accent px-3 py-2 text-[13px] font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-lg bg-accent px-3 py-1.5 text-[13px] font-medium text-white shadow-soft transition hover:bg-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {saving ? <Loader2 size={14} className="animate-spin" /> : "Save"}
                   </button>
