@@ -72,6 +72,9 @@ function noteStage(n: Note): BoardStage {
 }
 
 function workerStage(w: Worker): BoardStage {
+  // Queued work hasn't started and isn't yours to act on yet — it's waiting on
+  // another worker, so it belongs behind everything you could pick up.
+  if (w.status === "queued") return "backlog";
   if (w.status === "running" || w.status === "review") return "doing";
   if (w.status === "approved") return "done";
   return "todo"; // failed / stopped — needs a decision

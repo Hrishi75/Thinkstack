@@ -440,6 +440,11 @@ pub async fn orch_spawn(
     branch: String,
     // Ref to branch from — a PR's head branch. Empty means the repo's HEAD.
     base_ref: String,
+    // Resolve `base_ref` locally instead of fetching it. Set when branching off
+    // a sibling worker's branch, which exists on this machine; a PR's head ref
+    // must still be fetched, and must not silently resolve to a stale local
+    // branch that happens to share its name.
+    base_local: bool,
     prompt: String,
     model: String,
     permission_mode: String,
@@ -463,9 +468,18 @@ pub async fn orch_spawn(
     let git = state.bin("git").await?;
     let claude = state.bin("claude").await?;
 
-    // A PR worker must start from that PR's code, not from local HEAD.
+    // A PR worker must start from that PR's code, not from local HEAD; a
+    // dependent worker must start from its parent's finished branch.
     let base_sha = if base_ref.is_empty() {
         run(&git, &["rev-parse", "HEAD"], Some(&repo)).await?
+    } else if base_local {
+        run(
+            &git,
+            &["rev-parse", "--verify", &format!("{base_ref}^{{commit}}")],
+            Some(&repo),
+        )
+        .await
+        .map_err(|_| format!("couldn't find the branch {base_ref} on this machine"))?
     } else {
         run(&git, &["fetch", "origin", &base_ref], Some(&repo))
             .await
@@ -641,6 +655,37 @@ pub async fn orch_diff(
     let _ = run(&git, &["add", "-A", "-N"], Some(worktree)).await;
     let diff = run(&git, &["diff", &base_sha], Some(worktree)).await?;
     Ok(truncate(&diff, MAX_DIFF_CHARS))
+}
+
+/// Just the paths `orch_diff` would show, so the UI can tell when two workers
+/// are editing the same file.
+///
+/// Deliberately read from git rather than from the worker's tool calls: git is
+/// the ground truth for what actually changed, it counts edits made through the
+/// shell, and it never mistakes a file the worker merely *read* for one it
+/// rewrote.
+#[tauri::command]
+pub async fn orch_changed_files(
+    state: tauri::State<'_, Orchestrator>,
+    worktree_path: String,
+    base_sha: String,
+) -> Result<Vec<String>, String> {
+    if !base_sha.chars().all(|c| c.is_ascii_hexdigit()) || base_sha.is_empty() {
+        return Err("invalid base commit".into());
+    }
+    let worktree = Path::new(&worktree_path);
+    if !worktree.is_absolute() || !worktree.exists() {
+        return Err("this worker's worktree is gone".into());
+    }
+    let git = state.bin("git").await?;
+    let _ = run(&git, &["add", "-A", "-N"], Some(worktree)).await;
+    let out = run(&git, &["diff", "--name-only", &base_sha], Some(worktree)).await?;
+    Ok(out
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .map(String::from)
+        .collect())
 }
 
 #[derive(Serialize)]

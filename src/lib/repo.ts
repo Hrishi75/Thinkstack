@@ -281,9 +281,9 @@ export const workersRepo = {
     const db = await getDb();
     await db.execute(
       `INSERT INTO workers (id, repo_path, repo_label, source_kind, source_number, title,
-                            prompt, branch, worktree_path, base_sha, status, error, session_id,
-                            cost_usd, pr_url, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            prompt, branch, worktree_path, base_sha, depends_on, status, error,
+                            session_id, cost_usd, pr_url, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         w.id,
         w.repo_path,
@@ -295,6 +295,7 @@ export const workersRepo = {
         w.branch,
         w.worktree_path,
         w.base_sha,
+        w.depends_on,
         w.status,
         w.error,
         w.session_id,
@@ -319,6 +320,7 @@ export const workersRepo = {
         | "worktree_path"
         | "base_sha"
         | "title"
+        | "prompt"
       >
     >
   ): Promise<void> {
@@ -332,6 +334,7 @@ export const workersRepo = {
       "worktree_path",
       "base_sha",
       "title",
+      "prompt",
     ]);
     if (!fields.length) return;
     fields.push("updated_at = ?");
@@ -343,12 +346,31 @@ export const workersRepo = {
   /**
    * Worker processes die with the app, so anything still marked running at
    * startup is an orphan from a previous launch.
+   *
+   * A `queued` worker is deliberately left alone: it holds no process, so it
+   * survives a restart intact and the scheduler picks it up when its parent is
+   * approved. What it cannot survive is losing that parent — a discarded,
+   * failed or stopped one will never be approved, so those rows would wait
+   * forever. Strand them explicitly rather than leaving them to look pending.
    */
   async reconcileOrphans(): Promise<void> {
     const db = await getDb();
+    const ts = now();
     await db.execute(
       "UPDATE workers SET status = 'stopped', updated_at = ? WHERE status = 'running'",
-      [now()]
+      [ts]
+    );
+    await db.execute(
+      `UPDATE workers
+          SET status = 'failed',
+              error = 'The worker this one was waiting for is gone, so it can never start.',
+              updated_at = ?
+        WHERE status = 'queued'
+          AND depends_on <> ''
+          AND (depends_on NOT IN (SELECT id FROM workers)
+               OR depends_on IN (SELECT id FROM workers
+                                  WHERE status IN ('failed', 'stopped')))`,
+      [ts]
     );
   },
 

@@ -164,6 +164,12 @@ pub fn run() {
             sql: include_str!("../migrations/0013_notifications.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 14,
+            description: "add depends_on to workers for queued dependencies",
+            sql: include_str!("../migrations/0014_worker_depends_on.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     // Versions must be unique and ascending. A duplicate or out-of-order one
@@ -230,6 +236,7 @@ pub fn run() {
             orchestrator::orch_spawn,
             orchestrator::orch_stop,
             orchestrator::orch_diff,
+            orchestrator::orch_changed_files,
             orchestrator::orch_approve,
             orchestrator::orch_discard
         ])

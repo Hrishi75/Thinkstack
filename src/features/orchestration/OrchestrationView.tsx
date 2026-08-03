@@ -15,8 +15,13 @@ import {
   ExternalLink,
   TriangleAlert,
   Play,
+  GitBranch,
 } from "lucide-react";
-import { useOrchestrator, WORKER_MODELS } from "../../store/orchestrator";
+import {
+  collisionsFrom,
+  useOrchestrator,
+  WORKER_MODELS,
+} from "../../store/orchestrator";
 import { announce } from "../../store/notifications";
 import {
   WORKER_STATUS_STYLES,
@@ -105,8 +110,21 @@ function DiffModal({
   );
 }
 
+/** Short, recognizable name for a worker — its ticket when it has one. */
+function workerLabel(w: Worker): string {
+  return w.source_number === null ? w.title || w.branch : `#${w.source_number}`;
+}
+
+/** Workers a new one can be queued behind: anything not already dead. */
+function canBeDependedOn(w: Worker): boolean {
+  return w.status === "queued" || w.status === "running" || w.status === "review" || w.status === "approved";
+}
+
 function WorkerCard({ worker }: { worker: Worker }) {
   const logs = useOrchestrator((s) => s.logs[worker.id]);
+  const parent = useOrchestrator((s) =>
+    worker.depends_on ? s.workers.find((w) => w.id === worker.depends_on) : undefined
+  );
   const stop = useOrchestrator((s) => s.stop);
   const diff = useOrchestrator((s) => s.diff);
   const approve = useOrchestrator((s) => s.approve);
@@ -190,6 +208,13 @@ function WorkerCard({ worker }: { worker: Worker }) {
             <span className="font-mono">{worker.branch}</span>
             <span>· {relativeTime(worker.created_at)}</span>
             {worker.cost_usd > 0 && <span>· ${worker.cost_usd.toFixed(2)}</span>}
+            {parent && (
+              <span className="flex items-center gap-1 text-violet-600 dark:text-violet-400">
+                <GitBranch size={11} />
+                {worker.status === "queued" ? "after" : "built on"}{" "}
+                {workerLabel(parent)}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -214,7 +239,13 @@ function WorkerCard({ worker }: { worker: Worker }) {
       )}
 
       <div className="flex flex-wrap items-center gap-1 px-3 py-2.5">
-        {worker.status === "running" ? (
+        {worker.status === "queued" ? (
+          <span className="px-2.5 py-1.5 text-[12px] text-muted">
+            {parent
+              ? `Starts once ${workerLabel(parent)} is approved — it will branch from that work.`
+              : "Waiting to start."}
+          </span>
+        ) : worker.status === "running" ? (
           <button
             onClick={() => guard("stop", () => stop(worker.id))}
             className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[12px] text-muted transition hover:bg-elevated hover:text-red-500"
@@ -315,12 +346,16 @@ function WorkerCard({ worker }: { worker: Worker }) {
 
 function QueueRow({ item, busy }: { item: WorkItem; busy: boolean }) {
   const start = useOrchestrator((s) => s.start);
+  const workers = useOrchestrator((s) => s.workers);
   const [starting, setStarting] = useState(false);
+  const [after, setAfter] = useState("");
+
+  const candidates = useMemo(() => workers.filter(canBeDependedOn), [workers]);
 
   const run = async () => {
     setStarting(true);
     try {
-      await start(item);
+      await start(item, after);
     } catch (e) {
       // Spawning touches git, gh and the filesystem; the reason it failed is
       // worth keeping around rather than vanishing with the toast.
@@ -356,18 +391,38 @@ function QueueRow({ item, busy }: { item: WorkItem; busy: boolean }) {
       {busy ? (
         <span className="shrink-0 text-[11px] text-muted">worker active</span>
       ) : (
-        <button
-          onClick={run}
-          disabled={starting}
-          className="flex shrink-0 items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11.5px] text-muted transition hover:border-accent/50 hover:text-text disabled:opacity-40"
-        >
-          {starting ? (
-            <Loader2 size={11} className="animate-spin" />
-          ) : (
-            <Play size={11} />
+        <div className="flex shrink-0 items-center gap-1.5">
+          {candidates.length > 0 && (
+            <select
+              aria-label="Start after another worker"
+              value={after}
+              onChange={(e) => setAfter(e.target.value)}
+              title="Queue this behind another worker so it branches from that work"
+              className="max-w-[150px] rounded-md bg-elevated/60 px-1.5 py-1 text-[11px] text-muted outline-none"
+            >
+              <option value="">Start now</option>
+              {candidates.map((w) => (
+                <option key={w.id} value={w.id}>
+                  after {workerLabel(w)} — {w.title.slice(0, 30)}
+                </option>
+              ))}
+            </select>
           )}
-          Start worker
-        </button>
+          <button
+            onClick={run}
+            disabled={starting}
+            className="flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-[11.5px] text-muted transition hover:border-accent/50 hover:text-text disabled:opacity-40"
+          >
+            {starting ? (
+              <Loader2 size={11} className="animate-spin" />
+            ) : after ? (
+              <GitBranch size={11} />
+            ) : (
+              <Play size={11} />
+            )}
+            {after ? "Queue worker" : "Start worker"}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -392,17 +447,35 @@ export default function OrchestrationView() {
 
   const running = workers.filter((w) => w.status === "running").length;
   const review = workers.filter((w) => w.status === "review").length;
+  const queued = workers.filter((w) => w.status === "queued").length;
 
-  // An item already has a worker if one is live or waiting on review.
+  // An item already has a worker if one is queued, live, or waiting on review.
   const claimed = useMemo(
     () =>
       new Set(
         workers
-          .filter((w) => w.status === "running" || w.status === "review")
+          .filter(
+            (w) =>
+              w.status === "queued" ||
+              w.status === "running" ||
+              w.status === "review"
+          )
           .map((w) => `${w.source_kind}-${w.source_number}`)
       ),
     [workers]
   );
+
+  const changedFiles = useOrchestrator((s) => s.changedFiles);
+  const collisions = useMemo(
+    () => collisionsFrom(changedFiles, workers),
+    [changedFiles, workers]
+  );
+
+  // Workers are identified by their ticket in the log; match that here.
+  const labelOf = (id: string) => {
+    const w = workers.find((x) => x.id === id);
+    return w ? workerLabel(w) : "a worker";
+  };
 
   const missing = env
     ? [
@@ -427,6 +500,11 @@ export default function OrchestrationView() {
             </p>
           </div>
           <div className="no-drag mt-0.5 flex shrink-0 items-center gap-2 text-[12px] text-muted">
+            {queued > 0 && (
+              <span className="text-violet-600 dark:text-violet-400">
+                {queued} queued
+              </span>
+            )}
             {running > 0 && <span>{running} running</span>}
             {review > 0 && (
               <span className="text-amber-600 dark:text-amber-400">
@@ -443,6 +521,40 @@ export default function OrchestrationView() {
               Missing {missing.join(" and ")}. Workers can't start until that's
               available to the app.
             </span>
+          </div>
+        )}
+
+        {collisions.length > 0 && (
+          <div className="no-drag mb-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-[12px] text-amber-700 dark:text-amber-400">
+            <TriangleAlert size={14} className="mt-px shrink-0" />
+            <div className="min-w-0">
+              <span className="font-medium">
+                {collisions.length === 1
+                  ? "1 file is"
+                  : `${collisions.length} files are`}{" "}
+                being changed by more than one worker.
+              </span>
+              <ul className="mt-1 space-y-0.5">
+                {collisions.slice(0, 5).map((c) => (
+                  <li key={c.path} className="truncate">
+                    <span className="font-mono">{c.path}</span>
+                    <span className="text-amber-700/70 dark:text-amber-400/70">
+                      {" — "}
+                      {c.workerIds.map(labelOf).join(", ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {collisions.length > 5 && (
+                <div className="mt-0.5 text-amber-700/70 dark:text-amber-400/70">
+                  …and {collisions.length - 5} more.
+                </div>
+              )}
+              <div className="mt-1 text-amber-700/70 dark:text-amber-400/70">
+                Separate worktrees mean neither worker can see the other's edits —
+                expect a conflict when you merge the second one.
+              </div>
+            </div>
           </div>
         )}
 

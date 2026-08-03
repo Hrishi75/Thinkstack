@@ -157,8 +157,12 @@ export function toMemoryCategory(raw: string): MemoryCategory {
 }
 
 /** Lifecycle of an orchestration worker. The process is never resumed across
- * app restarts, so `running` rows are reconciled to `stopped` on load. */
+ * app restarts, so `running` rows are reconciled to `stopped` on load.
+ *
+ * `queued` is the one status with no process and no worktree behind it: the
+ * worker is waiting for the worker named in `depends_on` to be approved. */
 export type WorkerStatus =
+  | "queued"
   | "running"
   | "review"
   | "approved"
@@ -174,9 +178,12 @@ export interface Worker {
   title: string;
   prompt: string;
   branch: string;
+  /** Empty until a queued worker is promoted and its worktree is created. */
   worktree_path: string;
   /** Commit the worktree branched from; diffs are computed against it. */
   base_sha: string;
+  /** Id of the worker this one waits on, or "" to start immediately. */
+  depends_on: string;
   status: WorkerStatus;
   error: string;
   /** Claude Code session id, for `claude --resume`. */
@@ -191,6 +198,11 @@ export const WORKER_STATUS_STYLES: Record<
   WorkerStatus,
   { label: string; dot: string; pill: string }
 > = {
+  queued: {
+    label: "Queued",
+    dot: "bg-violet-500",
+    pill: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  },
   running: {
     label: "Running",
     dot: "bg-sky-500",
