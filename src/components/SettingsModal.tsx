@@ -1,9 +1,48 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, KeyRound, Check, Loader2 } from "lucide-react";
+import {
+  X,
+  KeyRound,
+  Check,
+  Loader2,
+  FileText,
+  Braces,
+  DatabaseBackup,
+} from "lucide-react";
 import { useAi, PROVIDERS, DEFAULT_MODELS } from "../store/ai";
 import { announce } from "../store/notifications";
+import {
+  backupDatabase,
+  exportNotesMarkdown,
+  exportWorkspaceJson,
+  type ExportResult,
+} from "../lib/export";
 import { cn } from "../lib/util";
+
+/** The three ways out, in the order most people want them. */
+const EXPORTS = [
+  {
+    key: "markdown",
+    icon: FileText,
+    label: "Export notes as Markdown",
+    hint: "One .md file per note, in a folder you choose",
+    run: exportNotesMarkdown,
+  },
+  {
+    key: "json",
+    icon: Braces,
+    label: "Export everything as JSON",
+    hint: "Notes, tasks, stickies, memories, calendar marks and board layout",
+    run: exportWorkspaceJson,
+  },
+  {
+    key: "backup",
+    icon: DatabaseBackup,
+    label: "Back up the database",
+    hint: "A consistent copy of the SQLite file itself",
+    run: backupDatabase,
+  },
+] as const;
 
 export default function SettingsModal() {
   const open = useAi((s) => s.settingsOpen);
@@ -19,13 +58,40 @@ export default function SettingsModal() {
   const [keyDraft, setKeyDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busyExport, setBusyExport] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setKeyDraft("");
       setError(null);
+      setExportError(null);
     }
   }, [open, provider]);
+
+  const runExport = async (
+    key: string,
+    fn: () => Promise<ExportResult | null>
+  ) => {
+    setBusyExport(key);
+    setExportError(null);
+    try {
+      const result = await fn();
+      // A cancelled dialog is not a failure — say nothing and leave it be.
+      if (result) {
+        void announce({
+          kind: "system",
+          title: result.summary,
+          body: result.path,
+          toast: true,
+        });
+      }
+    } catch (e) {
+      setExportError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setBusyExport("");
+    }
+  };
 
   const providerLabel =
     PROVIDERS.find((p) => p.key === provider)?.label ?? provider;
@@ -84,7 +150,7 @@ export default function SettingsModal() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
-              <h2 className="text-[15px] font-semibold">AI Assistant</h2>
+              <h2 className="text-[15px] font-semibold">Settings</h2>
               <button
                 onClick={() => setOpen(false)}
                 className="rounded-md p-1 text-muted transition hover:bg-elevated hover:text-text"
@@ -94,7 +160,11 @@ export default function SettingsModal() {
               </button>
             </div>
 
-            <div className="flex flex-col gap-4 px-4 py-4">
+            <div className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto px-4 py-4">
+              <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted/70">
+                AI Assistant
+              </h3>
+
               {/* Provider */}
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-muted">
@@ -185,6 +255,49 @@ export default function SettingsModal() {
                 touches any other server. AI actions send the current note's text
                 to {providerLabel}.
               </p>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted/70">
+                  Your data
+                </h3>
+
+                <div className="flex flex-col gap-1">
+                  {EXPORTS.map(({ key, icon: Icon, label, hint, run }) => (
+                    <button
+                      key={key}
+                      onClick={() => runExport(key, run)}
+                      disabled={!!busyExport}
+                      className="flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-elevated/70 disabled:opacity-40"
+                    >
+                      {busyExport === key ? (
+                        <Loader2
+                          size={14}
+                          className="mt-px shrink-0 animate-spin text-accent"
+                        />
+                      ) : (
+                        <Icon size={14} className="mt-px shrink-0 text-muted" />
+                      )}
+                      <span className="min-w-0">
+                        <span className="block text-[13px]">{label}</span>
+                        <span className="block text-[11.5px] leading-relaxed text-muted">
+                          {hint}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {exportError && (
+                  <p className="mt-1.5 rounded-lg bg-red-500/10 px-2.5 py-2 text-[12px] text-red-500">
+                    {exportError}
+                  </p>
+                )}
+
+                <p className="mt-2 rounded-lg bg-elevated/50 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+                  Everything is written straight to the folder you pick. Nothing is
+                  uploaded, and no copy is kept anywhere else.
+                </p>
+              </div>
             </div>
           </motion.div>
         </motion.div>

@@ -2,6 +2,7 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod ai;
+mod export;
 mod orchestrator;
 
 /// Sticky ids are client-generated nanoids; reject anything else before the
@@ -183,6 +184,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:thinkstack.db", migrations)
@@ -238,7 +240,9 @@ pub fn run() {
             orchestrator::orch_diff,
             orchestrator::orch_changed_files,
             orchestrator::orch_approve,
-            orchestrator::orch_discard
+            orchestrator::orch_discard,
+            export::export_write_file,
+            export::export_write_bundle
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
