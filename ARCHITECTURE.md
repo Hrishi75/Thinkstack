@@ -36,6 +36,11 @@ The frontend follows a one-directional flow: **UI → store → repository → d
 Components never touch SQL directly — they go through a store, which calls the
 repository. This keeps queries in one place and views easy to reason about.
 
+One deliberate exception: [`src/lib/export.ts`](src/lib/export.ts) reads the
+repositories directly rather than through a store. An export is a one-shot read
+of everything with no state to hold afterwards, so a store would be pure
+ceremony — but it is the only module that skips a layer.
+
 ### Stores
 
 Each domain has its own Zustand store (`notes`, `tasks`, `sticky`, `memory`,
@@ -83,7 +88,7 @@ not shared in-memory state.
 | `notes` | Note documents (`content_json` for BlockNote, `body_text` projection for search), icon, pinned/archived flags |
 | `tasks` | Tasks with an optional `description`, priority, due date (`due_at`, plus `due_has_time` when it carries a time of day), fractional `position` for ordering, optional `note_id` FK, and a `notified` flag so due reminders fire once |
 | `memories` | Standing AI context: titled entries with a `category` and an `enabled` flag |
-| `workers` | Orchestration sessions: source issue/PR, branch, worktree path, `base_sha`, status |
+| `workers` | Orchestration sessions: source issue/PR, branch, worktree path, `base_sha`, status, and `depends_on` for a worker queued behind another |
 | `sticky_notes` | Sticky content, color, geometry (x/y/width/height) |
 | `board_items` | Where the user dragged one item on the unified board: `(kind, item_id)` → `stage` + `position` |
 | `notifications` | In-app feed entries: `kind`, a UNIQUE `event_key` for dedupe, `read` flag, and the item to open (`link_kind`, `link_id`) |
@@ -108,8 +113,9 @@ projection, assembled by `useBoardCards()` in
 
 - **Resolving a column** — an item with a placement sits where the user put it.
   Everything else falls back to a stage derived from its own state (a task with
-  a due date → *To do*, a running worker → *In progress*), so the board is
-  useful before anyone has dragged anything.
+  a due date → *To do*, a running worker → *In progress*, a worker still queued
+  behind another → *Backlog*), so the board is useful before anyone has dragged
+  anything.
 - **Done is the task checkbox** — for tasks, `done` outranks any placement in
   both directions: completing a task anywhere moves its card, and dropping a
   card into *Done* writes `done = 1`. This keeps the board and the task list
@@ -188,13 +194,36 @@ Orchestration view → orchestrator store → invoke(orch_*) → Rust
 
 - **Isolation** — each worker gets `git worktree add -b <branch> <app-data>/worktrees/<id>`,
   so N workers edit the same repository concurrently and never share a file. A
-  worker for a PR branches from that PR's head ref, not local `HEAD`.
+  worker for a PR branches from that PR's head ref, not local `HEAD`; a worker
+  queued behind another branches from that worker's branch, resolved locally
+  (`base_local`) rather than fetched, so a PR head can never silently resolve
+  to a stale local branch of the same name.
+- **Collision reporting** — isolation stops workers overwriting each other, not
+  changing the same file from two branches. `orch_changed_files` reads
+  `git diff --name-only <base_sha>` per open worker and the store intersects the
+  sets, so an overlap surfaces while it can still be redirected. It reads git
+  rather than the worker's tool calls deliberately: git counts edits made
+  through the shell, and never mistakes a file that was read for one that was
+  rewritten. Polling is gated on something actually running.
+- **Dependencies** — `depends_on` names a worker this one waits for. It waits
+  for `approved`, not `review`: until approval a worker's last edits may still
+  be uncommitted, so branching off it then would quietly lose them. A `queued`
+  worker holds no process and no worktree, so it survives a restart intact —
+  what it cannot survive is losing its parent, so `reconcileQueue` fails any
+  whose parent was discarded, stopped or failed. Promotions run sequentially:
+  `git worktree add` mutates one shared repository.
 - **Streaming** — the child's stdout is `--output-format stream-json`. A tokio
   task parses each event, emits a readable line as `orch://log`, and on EOF
   reaps the process and emits a final `orch://status`. Logs are in-memory
   (capped per worker); only status, cost, and session id are persisted.
 - **Lifecycle** — processes die with the app, so `workers` rows still marked
   `running` at startup are reconciled to `stopped` (`reconcileOrphans`).
+  `queued` rows are left alone there — they hold no process — but any whose
+  dependency is gone are failed in the same pass.
+- **Briefs** — a worker's prompt names the other workers running on the repo and
+  the files they are touching, and carries the same standing Memory context
+  every AI request does. It is built at spawn, not at enqueue, so a worker that
+  waited hours for its dependency still opens with what is true now.
 - **Work queue** — open issues and PRs come from `gh issue list` / `gh pr list`
   as JSON.
 
@@ -208,6 +237,30 @@ on it, so "propose only, never publish" is enforced by the permission layer
 rather than by instructions in the prompt. Publishing exists in exactly one
 place — `orch_approve`, reachable only from an explicit user click. Build and
 test runners are a separate opt-in.
+
+## Export
+
+[`src/lib/export.ts`](src/lib/export.ts) assembles the data;
+[`src-tauri/src/export.rs`](src-tauri/src/export.rs) writes it.
+
+- **No filesystem scope** — writing goes through two commands using `std::fs`
+  rather than the filesystem plugin, so the webview is never granted a
+  directory. Only `dialog:default` is added, and every path comes from a picker
+  the user just clicked through.
+- **Markdown** — one file per live note, converted by a headless
+  `BlockNoteEditor`, falling back per note to the `body_text` projection kept
+  for search. A note whose blocks won't parse still exports its words.
+- **JSON** — every record under a `format` version, including trashed notes.
+  Workers and notifications are excluded: both describe this machine now rather
+  than anything the user wrote.
+- **Backup** — `VACUUM INTO`, never a file copy. In WAL mode the `.db` alone
+  can be missing the most recent writes. It refuses to overwrite, which is
+  surfaced as a plain "pick a name that isn't taken" rather than a SQLite error.
+- **Names** — note titles become file names, so they are sanitised on the way
+  out and validated again in Rust on the way in. The validator bans separators
+  and a leading dot, which is what contains a name; it deliberately allows an
+  interior `..`, since without separators it cannot name a parent directory and
+  refusing it would fail a whole export over a note titled "Wait.. what?".
 
 ## Security
 

@@ -35,7 +35,11 @@ Connect your own **Anthropic**, **OpenAI**, or **Groq** API key in Settings and 
 A **Memory** section for the context you'd otherwise retype into every prompt — what your company does, what you sell, who's on the team, how you want things written. Each memory is a titled card filed under a category (Company / Product / People / Projects / Style & tone / General) that you can **toggle off** without deleting. Every enabled memory is prepended to **every AI request** across the app, so the assistant already knows your world. A **Preview context** panel shows the exact text the model receives, along with a rough token count.
 
 ### 🧩 Orchestration
-Run **several Claude Code workers in parallel** on one repository. Point Thinkstack at a local git repo, load its open **GitHub issues and pull requests** via the `gh` CLI, and start a worker on each one you want handled. Every worker gets **its own git worktree**, so they edit the same repo simultaneously without ever colliding, and their progress streams into the app live.
+Run **several Claude Code workers in parallel** on one repository. Point Thinkstack at a local git repo, load its open **GitHub issues and pull requests** via the `gh` CLI, and start a worker on each one you want handled. Every worker gets **its own git worktree**, so they edit the same repo at the same time without ever overwriting each other's files, and their progress streams into the app live.
+
+Separate worktrees keep workers off each other's files, but not out of each other's way: two workers can still change the *same* file from different branches, and you'd only find out at merge time. So Thinkstack watches what each one actually touches and **tells you the moment two of them land on the same file** — while you can still redirect one. Each worker is also told who else is running and what they're editing, so it can stay out of their way on its own.
+
+Work that builds on other work can be **queued behind it**: pick "after #12" when starting a worker and it waits, then branches from that worker's finished code once you've approved it. Anything queued behind a worker you discard or stop is failed with a reason rather than left waiting forever.
 
 Autonomy stops at your machine: `git push` and `gh pr create` are **absent from each worker's permission allowlist**, so a worker *cannot* publish — it's blocked, not merely discouraged. Finished workers land in **Needs review**, where you read the diff and then choose **Approve & open PR** or **Push branch only**. Discarding a worker removes its worktree and branch. Letting workers run build and test commands is a separate opt-in checkbox.
 
@@ -54,8 +58,11 @@ A global `⌘⇧Space` hotkey opens a centered capture bar from **anywhere on yo
 ### 🌗 Themes
 Light and dark themes that follow your system preference and remember your manual choice.
 
+### 📤 Export & Backup
+Your data is yours to take. From **Settings → Your data**, export **every note as Markdown** (one `.md` per note in a dated folder, with front matter other tools read), export **everything as JSON** (notes including trashed ones, tasks, stickies, memories, calendar marks and board layout), or take a **database backup** — a consistent copy of the SQLite file, written with `VACUUM INTO` so nothing still sitting in the write-ahead log is lost. Files go straight to the folder you pick; nothing is uploaded and no copy is kept anywhere else.
+
 ### 🔒 Local-First
-No cloud, no account, no telemetry. Everything is stored in a local SQLite database (WAL mode) on your machine. The only outbound traffic is what you ask for: AI requests to your chosen provider, and — in Orchestration — `gh` talking to GitHub and an approved `git push`.
+No cloud, no account, no telemetry. Everything is stored in a local SQLite database (WAL mode) on your machine, and you can [take it out](#-export--backup) whenever you want. The only outbound traffic is what you ask for: AI requests to your chosen provider, and — in Orchestration — `gh` talking to GitHub and an approved `git push`.
 
 ## 🔧 Requirements
 
