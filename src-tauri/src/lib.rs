@@ -242,7 +242,8 @@ pub fn run() {
             orchestrator::orch_approve,
             orchestrator::orch_discard,
             export::export_write_file,
-            export::export_write_bundle
+            export::export_write_bundle,
+            export::import_read_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

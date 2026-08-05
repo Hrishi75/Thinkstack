@@ -238,10 +238,11 @@ rather than by instructions in the prompt. Publishing exists in exactly one
 place — `orch_approve`, reachable only from an explicit user click. Build and
 test runners are a separate opt-in.
 
-## Export
+## Export & Import
 
-[`src/lib/export.ts`](src/lib/export.ts) assembles the data;
-[`src-tauri/src/export.rs`](src-tauri/src/export.rs) writes it.
+[`src/lib/export.ts`](src/lib/export.ts) assembles the data,
+[`src/lib/import.ts`](src/lib/import.ts) reads it back, and
+[`src-tauri/src/export.rs`](src-tauri/src/export.rs) does the file I/O.
 
 - **No filesystem scope** — writing goes through two commands using `std::fs`
   rather than the filesystem plugin, so the webview is never granted a
@@ -261,6 +262,20 @@ test runners are a separate opt-in.
   and a leading dot, which is what contains a name; it deliberately allows an
   interior `..`, since without separators it cannot name a parent directory and
   refusing it would fail a whole export over a note titled "Wait.. what?".
+- **Import is additive** — a record whose id is already present is skipped, not
+  overwritten, so the same file can be imported twice with no effect and an
+  import can never replace work done since the export. It runs in two steps:
+  `planImport` reads, validates and reports what *would* change; nothing is
+  written until `applyImport` takes that plan. There is no transaction, and
+  that follows from being additive — a failure part-way is recovered by
+  importing the file again, without holding a write lock across every insert.
+- **Trusting the file** — every incoming record is normalised, not just
+  type-checked: missing optional fields take defaults, `priority` is clamped,
+  a `recur` without a due date is dropped, and an empty `note_id` becomes
+  `NULL` rather than a dangling reference. Only the fields a row cannot exist
+  without (`id`, `created_at`) are grounds for rejecting it outright.
+  `importRepo.insertNote` exists because `notesRepo.create` forces
+  `archived = 0` — importing through it would restore a trash as live notes.
 
 ## Security
 

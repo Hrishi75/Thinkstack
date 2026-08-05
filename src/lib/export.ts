@@ -21,10 +21,30 @@ import {
   stickyRepo,
   tasksRepo,
 } from "./repo";
-import type { Note } from "./types";
+import type {
+  BoardPlacement,
+  DayMark,
+  Memory,
+  Note,
+  Sticky,
+  Task,
+} from "./types";
 
 /** Envelope version, so a future importer can recognise what it's reading. */
-const EXPORT_FORMAT = 1;
+export const EXPORT_FORMAT = 1;
+
+/** Shape of the JSON export — the contract the importer reads back. */
+export interface WorkspaceExport {
+  format: number;
+  app: string;
+  exported_at: string;
+  notes: Note[];
+  tasks: Task[];
+  stickies: Sticky[];
+  memories: Memory[];
+  day_marks: DayMark[];
+  board: BoardPlacement[];
+}
 
 export interface ExportResult {
   /** One line for the toast. */
@@ -159,7 +179,7 @@ export async function exportWorkspaceJson(): Promise<ExportResult | null> {
       boardRepo.list(),
     ]);
 
-  const payload = {
+  const payload: WorkspaceExport = {
     format: EXPORT_FORMAT,
     app: "Thinkstack",
     exported_at: new Date().toISOString(),

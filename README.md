@@ -58,8 +58,10 @@ A global `⌘⇧Space` hotkey opens a centered capture bar from **anywhere on yo
 ### 🌗 Themes
 Light and dark themes that follow your system preference and remember your manual choice.
 
-### 📤 Export & Backup
+### 📤 Export, Import & Backup
 Your data is yours to take. From **Settings → Your data**, export **every note as Markdown** (one `.md` per note in a dated folder, with front matter other tools read), export **everything as JSON** (notes including trashed ones, tasks, stickies, memories, calendar marks and board layout), or take a **database backup** — a consistent copy of the SQLite file, written with `VACUUM INTO` so nothing still sitting in the write-ahead log is lost. Files go straight to the folder you pick; nothing is uploaded and no copy is kept anywhere else.
+
+A JSON export can be **imported back**, which is how you move a workspace to another machine. Import is **additive**: it shows you exactly what it's about to add before writing anything, and anything already here is left untouched rather than overwritten — so importing the same file twice is harmless, and an import can never quietly replace work you've done since.
 
 ### 🔒 Local-First
 No cloud, no account, no telemetry. Everything is stored in a local SQLite database (WAL mode) on your machine, and you can [take it out](#-export--backup) whenever you want. The only outbound traffic is what you ask for: AI requests to your chosen provider, and — in Orchestration — `gh` talking to GitHub and an approved `git push`.

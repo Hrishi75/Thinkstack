@@ -380,6 +380,38 @@ export const workersRepo = {
   },
 };
 
+/* ----------------------------- Import ----------------------------- */
+
+export const importRepo = {
+  /**
+   * Insert a note exactly as it was exported.
+   *
+   * `notesRepo.create` is for notes the user is writing now, so it forces
+   * `archived = 0` and leaves `pinned` at its default. An import has to carry
+   * both across, or a restored trash comes back as live notes and every pin is
+   * quietly lost. The FTS triggers pick the row up either way.
+   */
+  async insertNote(n: Note): Promise<void> {
+    const db = await getDb();
+    await db.execute(
+      `INSERT INTO notes (id, title, content_json, body_text, icon, archived, pinned,
+                          created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        n.id,
+        n.title,
+        n.content_json,
+        n.body_text,
+        n.icon,
+        n.archived,
+        n.pinned,
+        n.created_at,
+        n.updated_at,
+      ]
+    );
+  },
+};
+
 /* ----------------------------- Sticky ----------------------------- */
 
 export const stickyRepo = {

@@ -1,9 +1,9 @@
-//! Getting your data back out.
+//! Getting your data back out — and back in.
 //!
-//! Writing happens through these commands rather than the filesystem plugin so
-//! that no directory scope has to be granted to the webview. Every path here
-//! comes from a save dialog the user just clicked through, and nothing else on
-//! disk is reachable.
+//! Reading and writing happen through these commands rather than the filesystem
+//! plugin so that no directory scope has to be granted to the webview. Every
+//! path here comes from a dialog the user just clicked through, and nothing
+//! else on disk is reachable.
 //!
 //! The database backup is deliberately *not* here: SQLite runs in WAL mode, so
 //! copying the file would miss anything still in the write-ahead log. That one
@@ -75,6 +75,24 @@ pub fn export_write_bundle(dir: String, files: Vec<ExportFile>) -> Result<usize,
             .map_err(|e| format!("couldn't write {}: {e}", f.name))?;
     }
     Ok(files.len())
+}
+
+/// Largest import we'll read. A workspace export is text; anything this size is
+/// a mistake or a wrong file, and reading it would only stall the app.
+const MAX_IMPORT_BYTES: u64 = 256 * 1024 * 1024;
+
+/// Read a file the user picked for import.
+#[tauri::command]
+pub fn import_read_file(path: String) -> Result<String, String> {
+    let src = validate_dest(&path)?;
+    let meta = std::fs::metadata(&src).map_err(|_| format!("no such file: {path}"))?;
+    if !meta.is_file() {
+        return Err("that isn't a file".into());
+    }
+    if meta.len() > MAX_IMPORT_BYTES {
+        return Err("that file is too large to be a Thinkstack export".into());
+    }
+    std::fs::read_to_string(&src).map_err(|e| format!("couldn't read {}: {e}", src.display()))
 }
 
 #[cfg(test)]

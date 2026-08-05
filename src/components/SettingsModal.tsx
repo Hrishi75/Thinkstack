@@ -8,6 +8,7 @@ import {
   FileText,
   Braces,
   DatabaseBackup,
+  Upload,
 } from "lucide-react";
 import { useAi, PROVIDERS, DEFAULT_MODELS } from "../store/ai";
 import { announce } from "../store/notifications";
@@ -17,6 +18,13 @@ import {
   exportWorkspaceJson,
   type ExportResult,
 } from "../lib/export";
+import { applyImport, planImport, type ImportPlan } from "../lib/import";
+import { useNotes } from "../store/notes";
+import { useTasks } from "../store/tasks";
+import { useSticky } from "../store/sticky";
+import { useMemory } from "../store/memory";
+import { useCalendar } from "../store/calendar";
+import { useBoard } from "../store/board";
 import { cn } from "../lib/util";
 
 /** The three ways out, in the order most people want them. */
@@ -60,12 +68,21 @@ export default function SettingsModal() {
   const [error, setError] = useState<string | null>(null);
   const [busyExport, setBusyExport] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
+
+  const reloadNotes = useNotes((s) => s.load);
+  const reloadTasks = useTasks((s) => s.load);
+  const reloadSticky = useSticky((s) => s.load);
+  const reloadMemory = useMemory((s) => s.load);
+  const reloadCalendar = useCalendar((s) => s.load);
+  const reloadBoard = useBoard((s) => s.load);
 
   useEffect(() => {
     if (open) {
       setKeyDraft("");
       setError(null);
       setExportError(null);
+      setPlan(null);
     }
   }, [open, provider]);
 
@@ -92,6 +109,61 @@ export default function SettingsModal() {
       setBusyExport("");
     }
   };
+
+  const chooseImport = () =>
+    runExport("import", async () => {
+      const next = await planImport();
+      // Hold the plan for confirmation — nothing is written by choosing a file.
+      setPlan(next);
+      return null;
+    });
+
+  const confirmImport = async () => {
+    if (!plan) return;
+    setBusyExport("import");
+    setExportError(null);
+    try {
+      const { added, skipped } = await applyImport(plan);
+      await Promise.all([
+        reloadNotes(),
+        reloadTasks(),
+        reloadSticky(),
+        reloadMemory(),
+        reloadCalendar(),
+        reloadBoard(),
+      ]);
+      setPlan(null);
+      void announce({
+        kind: "system",
+        title: `${added} item${added === 1 ? "" : "s"} imported`,
+        body: skipped ? `${skipped} already here were left alone` : "",
+        toast: true,
+      });
+    } catch (e) {
+      setExportError(String(e instanceof Error ? e.message : e));
+    } finally {
+      setBusyExport("");
+    }
+  };
+
+  /** "12 notes, 3 tasks" — only the kinds that actually have something. */
+  const planParts = plan
+    ? (
+        [
+          [plan.notes.length, "note"],
+          [plan.tasks.length, "task"],
+          [plan.stickies.length, "sticky"],
+          [plan.memories.length, "memory"],
+          [plan.dayMarks.length, "calendar mark"],
+        ] as const
+      )
+        .filter(([n]) => n > 0)
+        .map(([n, label]) =>
+          label === "memory"
+            ? `${n} ${n === 1 ? "memory" : "memories"}`
+            : `${n} ${label}${n === 1 ? "" : "s"}`
+        )
+    : [];
 
   const providerLabel =
     PROVIDERS.find((p) => p.key === provider)?.label ?? provider;
@@ -285,7 +357,73 @@ export default function SettingsModal() {
                       </span>
                     </button>
                   ))}
+
+                  <button
+                    onClick={chooseImport}
+                    disabled={!!busyExport}
+                    className="flex items-start gap-2.5 rounded-lg px-2.5 py-2 text-left transition hover:bg-elevated/70 disabled:opacity-40"
+                  >
+                    {busyExport === "import" && !plan ? (
+                      <Loader2
+                        size={14}
+                        className="mt-px shrink-0 animate-spin text-accent"
+                      />
+                    ) : (
+                      <Upload size={14} className="mt-px shrink-0 text-muted" />
+                    )}
+                    <span className="min-w-0">
+                      <span className="block text-[13px]">Import from JSON</span>
+                      <span className="block text-[11.5px] leading-relaxed text-muted">
+                        Adds what you don't already have — nothing is overwritten
+                      </span>
+                    </span>
+                  </button>
                 </div>
+
+                {plan && (
+                  <div className="mt-2 rounded-lg border border-border bg-elevated/40 px-3 py-2.5">
+                    {plan.total === 0 ? (
+                      <p className="text-[12.5px]">
+                        Nothing to import — everything in that file is already
+                        here.
+                      </p>
+                    ) : (
+                      <p className="text-[12.5px]">
+                        Ready to add <strong>{planParts.join(", ")}</strong>.
+                      </p>
+                    )}
+                    <p className="mt-1 text-[11.5px] leading-relaxed text-muted">
+                      {plan.skipped > 0 &&
+                        `${plan.skipped} record${plan.skipped === 1 ? "" : "s"} already here will be left untouched. `}
+                      {plan.invalid > 0 &&
+                        `${plan.invalid} couldn't be read and will be skipped. `}
+                      {plan.exportedAt &&
+                        `Exported ${new Date(plan.exportedAt).toLocaleString()}.`}
+                    </p>
+                    <div className="mt-2 flex items-center gap-1.5">
+                      {plan.total > 0 && (
+                        <button
+                          onClick={confirmImport}
+                          disabled={!!busyExport}
+                          className="flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-[12px] font-medium text-white transition hover:opacity-90 disabled:opacity-40"
+                        >
+                          {busyExport === "import" ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : (
+                            <Check size={12} />
+                          )}
+                          Import
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setPlan(null)}
+                        className="rounded-md px-2.5 py-1.5 text-[12px] text-muted transition hover:bg-elevated hover:text-text"
+                      >
+                        {plan.total > 0 ? "Cancel" : "Close"}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {exportError && (
                   <p className="mt-1.5 rounded-lg bg-red-500/10 px-2.5 py-2 text-[12px] text-red-500">
